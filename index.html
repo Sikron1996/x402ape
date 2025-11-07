@@ -76,7 +76,9 @@
     a { color: #60a5fa; }
   </style>
 
+  <!-- ethers -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+  <!-- WalletConnect Web3Modal HTML SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@web3modal/html@3.5.3/dist/index.umd.js"></script>
 </head>
 <body>
@@ -112,13 +114,16 @@
     const status = document.getElementById("status");
     let provider;
 
-    async function getWeb3Modal() {
+    // 🔧 Стабільне завантаження Web3Modal
+    async function getWeb3ModalClass() {
       return new Promise((resolve) => {
         const check = () => {
           if (window.Web3ModalHTML && window.Web3ModalHTML.Web3Modal) {
             resolve(window.Web3ModalHTML.Web3Modal);
-          } else if (window.Web3Modal) {
+          } else if (window.Web3Modal && typeof window.Web3Modal === "function") {
             resolve(window.Web3Modal);
+          } else if (window.Web3ModalHTML && typeof window.Web3ModalHTML === "function") {
+            resolve(window.Web3ModalHTML);
           } else {
             setTimeout(check, 300);
           }
@@ -130,8 +135,9 @@
     async function connectWallet() {
       try {
         status.textContent = "Loading WalletConnect…";
-        const Web3Modal = await getWeb3Modal();
-        const modal = new Web3Modal({
+        const Web3ModalClass = await getWeb3ModalClass();
+
+        const modal = new Web3ModalClass({
           projectId: WC_PROJECT_ID,
           themeMode: "dark",
           chains: [{
@@ -157,7 +163,6 @@
           provider = await modal.openModal();
           status.textContent = "✅ Connected via WalletConnect.";
         }
-
       } catch (err) {
         status.textContent = "❌ " + (err.message || err);
       }
@@ -174,10 +179,10 @@
         const signer = await ethersProvider.getSigner();
         const usdc = new ethers.Contract(USDC, ["function transfer(address,uint256) returns (bool)"], signer);
         const tx = await usdc.transfer(RECEIVER, ethers.parseUnits("3", 6));
-        status.textContent = "Transaction sent:\n" + tx.hash;
+        status.textContent = "Transaction sent:\\n" + tx.hash;
         const rc = await tx.wait();
         if (rc.status === 1) {
-          status.textContent = "✅ Payment success!\n" + tx.hash;
+          status.textContent = "✅ Payment success!\\n" + tx.hash;
         } else {
           status.textContent = "❌ Transaction failed.";
         }
