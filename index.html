@@ -23,8 +23,8 @@
   <!-- ethers -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
 
-  <!-- ✅ офіційний WalletConnect SDK без Web3Modal -->
-  <script src="https://unpkg.com/@walletconnect/ethereum-provider@2.14.1/dist/umd/index.min.js"></script>
+  <!-- ✅ WalletConnect Provider (пряма бібліотека без Web3Modal) -->
+  <script src="https://unpkg.com/@walletconnect/ethereum-provider@2.14.1/dist/index.umd.js"></script>
 </head>
 <body>
   <div class="track">
@@ -87,16 +87,17 @@
 
     async function payViaWalletConnect(){
       try{
-        statusEl.textContent="Initializing WalletConnect…";
-        const provider=await window.WalletConnectEthereumProvider.init({
-          projectId:WC_PROJECT_ID,
-          chains:[8453],
-          showQrModal:true,
-          methods:["eth_sendTransaction","personal_sign"],
-          rpcMap:{8453:"https://mainnet.base.org"},
+        statusEl.textContent="Connecting WalletConnect…";
+        // 👇 створюємо провайдер через глобальний об’єкт бібліотеки
+        const provider = await window.EthereumProvider.init({
+          projectId: WC_PROJECT_ID,
+          chains: [8453],
+          showQrModal: true,
+          rpcMap: { 8453: "https://mainnet.base.org" }
         });
+
         await provider.enable();
-        statusEl.textContent="Wallet connected. Checking network…";
+        statusEl.textContent="Wallet connected, checking network…";
         await ensureBaseNetwork(provider);
         await sendUSDC(provider);
       }catch(e){
