@@ -1,101 +1,239 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>x402ape — Base USDC payment</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 620px; margin: 40px auto; }
-    .card { border: 1px solid #ddd; border-radius: 14px; padding: 24px; }
-    button { padding: 10px 16px; border: none; border-radius: 6px; background: #0052ff; color: #fff; font-size: 14px; cursor: pointer; }
-    #status { margin-top: 16px; font-weight: 500; white-space: pre-line; }
-    code { background: #f4f4f4; padding: 2px 4px; border-radius: 4px; }
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --text: #e2e8f0;
+      --accent: #3b82f6;
+      --muted: #94a3b8;
+    }
+    body {
+      background: radial-gradient(circle at top, #1f2937 0%, #020617 60%);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: var(--text);
+    }
+    .card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 18px;
+      padding: 24px 26px 26px;
+      max-width: 520px;
+      width: 100%;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.28);
+    }
+    h1 {
+      font-size: 1.35rem;
+      margin-bottom: 4px;
+    }
+    p {
+      margin: 4px 0 10px;
+      color: var(--muted);
+    }
+    .amount {
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: inline-block;
+      margin-bottom: 14px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: transform 0.08s ease-out;
+    }
+    button.secondary {
+      background: rgba(148, 163, 184, 0.12);
+      color: var(--text);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+    }
+    button:active {
+      transform: translateY(1px);
+    }
+    #status {
+      margin-top: 8px;
+      font-weight: 500;
+      white-space: pre-line;
+      background: rgba(15, 23, 42, 0.35);
+      border: 1px solid rgba(148, 163, 184, 0.03);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 0.8rem;
+    }
+    a {
+      color: #93c5fd;
+    }
   </style>
-  <!-- ethers v6 CDN -->
+  <!-- ethers v6 -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+  <!-- Web3Modal (WalletConnect) -->
+  <script src="https://unpkg.com/@walletconnect/web3modal@2.7.1/dist/index.umd.js"></script>
 </head>
 <body>
   <div class="card">
     <h1>x402ape</h1>
-    <p>Оплата за послугу: <strong>1 USDC</strong> (мережа Base)</p>
-    <p>Цей endpoint сумісний з <a href="https://x402scan.com" target="_blank" rel="noreferrer">x402scan</a> і повертає 402.</p>
-    <button id="payBtn">Оплатити 1 USDC (MetaMask)</button>
-    <div id="status"></div>
-    <p>Перевірка endpoint: <a href="/api/pay" target="_blank">/api/pay</a></p>
+    <p>Pay for the service via Base USDC and stay compatible with x402scan.</p>
+    <div class="amount">Amount: 3 USDC (Base)</div>
+
+    <div class="btn-row">
+      <button id="connectBtn">Connect wallet</button>
+      <button id="payBtn">Pay 3 USDC</button>
+    </div>
+
+    <p>Check API endpoint: <a href="/api/pay" target="_blank">/api/pay</a></p>
+    <div id="status">Waiting for wallet…</div>
   </div>
+
   <script>
+    // CONFIG
     const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // USDC on Base
     const RECEIVER = "0xF97a410f2f0b64Cb5820baD63d878c3A967235AA";   // your wallet
-    const BASE_CHAIN_ID = "0x2105"; // 8453 decimal -> 0x2105
+    const BASE_CHAIN_ID = "0x2105"; // 8453 dec
+    const WC_PROJECT_ID = "YOUR_WC_PROJECT_ID"; // TODO: replace with real WalletConnect projectId
 
-    const btn = document.getElementById("payBtn");
     const statusEl = document.getElementById("status");
+    const connectBtn = document.getElementById("connectBtn");
+    const payBtn = document.getElementById("payBtn");
 
-    async function ensureBaseNetwork(provider) {
-      const current = await provider.send("eth_chainId", []);
+    // web3modal init
+    const { Web3Modal } = window.WalletConnectWeb3Modal;
+    const web3Modal = new Web3Modal({
+      projectId: WC_PROJECT_ID,
+      themeMode: "dark",
+      walletConnectVersion: 2,
+      chains: [
+        {
+          chainId: 8453,
+          name: "Base",
+          currency: "ETH",
+          rpcUrl: "https://mainnet.base.org"
+        }
+      ]
+    });
+
+    let currentProvider = null;  // EIP-1193 provider from modal
+    let usingMetaMask = false;
+
+    async function ensureBaseNetworkWithEip(provider) {
+      const current = await provider.request({ method: "eth_chainId" });
       if (current !== BASE_CHAIN_ID) {
         try {
-          await provider.send("wallet_switchEthereumChain", [{ chainId: BASE_CHAIN_ID }]);
+          await provider.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: BASE_CHAIN_ID }]
+          });
         } catch (err) {
-          // chain not added
-          await provider.send("wallet_addEthereumChain", [{
-            chainId: BASE_CHAIN_ID,
-            chainName: "Base",
-            nativeCurrency: { name: "Base", symbol: "ETH", decimals: 18 },
-            rpcUrls: ["https://mainnet.base.org"],
-            blockExplorerUrls: ["https://basescan.org"]
-          }]);
+          await provider.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: BASE_CHAIN_ID,
+              chainName: "Base",
+              nativeCurrency: { name: "Base", symbol: "ETH", decimals: 18 },
+              rpcUrls: ["https://mainnet.base.org"],
+              blockExplorerUrls: ["https://basescan.org"]
+            }]
+          });
         }
       }
     }
 
-    async function payWithMetaMask() {
-      if (typeof window.ethereum === "undefined") {
-        statusEl.textContent = "Потрібен MetaMask або інший EVM-гаманець у браузері.";
+    async function fetch402() {
+      try {
+        const r = await fetch("/api/pay");
+        if (r.status === 402) {
+          statusEl.textContent = "Got 402 from backend. Ready to pay via wallet.";
+        } else {
+          statusEl.textContent = "Backend returned " + r.status + ", continuing anyway.";
+        }
+      } catch (e) {
+        statusEl.textContent = "Failed to fetch /api/pay: " + e.message;
+      }
+    }
+
+    async function connectWallet() {
+      // Prefer MetaMask if installed
+      if (window.ethereum && window.ethereum.isMetaMask) {
+        usingMetaMask = true;
+        currentProvider = window.ethereum;
+        await currentProvider.request({ method: "eth_requestAccounts" });
+        await ensureBaseNetworkWithEip(currentProvider);
+        statusEl.textContent = "Connected via MetaMask.";
+        return;
+      }
+      // Otherwise WalletConnect modal
+      try {
+        const provider = await web3Modal.openModal();
+        currentProvider = provider;
+        await ensureBaseNetworkWithEip(currentProvider);
+        statusEl.textContent = "Connected via WalletConnect.";
+      } catch (e) {
+        statusEl.textContent = "Wallet connect cancelled.";
+      }
+    }
+
+    async function pay3USDC() {
+      if (!currentProvider) {
+        statusEl.textContent = "Connect a wallet first.";
         return;
       }
 
-      statusEl.textContent = "1) Отримую 402 від сервера…";
-      // запитуємо наш 402, щоб бути сумісними з x402
-      try {
-        const r = await fetch("/api/pay");
-        if (r.status !== 402) {
-          statusEl.textContent = "Сервер повернув не 402, а " + r.status + ". Продовжую платіж все одно…";
-        } else {
-          statusEl.textContent = "402 отримано. Відкриваю гаманець…";
-        }
-      } catch (e) {
-        statusEl.textContent = "Не вдалося отримати 402: " + e.message;
-      }
+      statusEl.textContent = "Sending 3 USDC… please confirm in wallet.";
+      // wrap EIP-1193 in ethers
+      const ethersProvider = new ethers.BrowserProvider(currentProvider);
+      const signer = await ethersProvider.getSigner();
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      await ensureBaseNetwork(provider);
-      const signer = await provider.getSigner();
-
-      // USDC uses 6 decimals
-      const amount = ethers.parseUnits("1", 6);
+      const amount = ethers.parseUnits("3", 6); // 3 USDC
       const abi = ["function transfer(address to, uint amount) returns (bool)"];
       const usdc = new ethers.Contract(USDC_ADDRESS, abi, signer);
 
       try {
-        statusEl.textContent = "Підписання транзакції в гаманці…";
         const tx = await usdc.transfer(RECEIVER, amount);
-        statusEl.textContent = "Транзакцію надіслано. Очікую підтвердження…\nTx: " + tx.hash;
+        statusEl.textContent = "Tx sent, waiting…\\n" + tx.hash;
         const receipt = await tx.wait();
         if (receipt.status === 1) {
-          statusEl.textContent = "✅ Payment successful\nTx: " + tx.hash;
-          // повідомимо бекенд (для x402scan)
+          statusEl.textContent = "✅ Payment successful\\n" + tx.hash;
+          // notify backend
           fetch("/api/pay?paid=true").catch(()=>{});
         } else {
-          statusEl.textContent = "❌ Транзакція не пройшла.";
+          statusEl.textContent = "❌ Transaction failed.";
         }
       } catch (err) {
-        statusEl.textContent = "❌ Помилка під час транзакції: " + (err.message || err);
+        statusEl.textContent = "❌ Error: " + (err.message || err);
       }
     }
 
-    btn.onclick = payWithMetaMask;
+    // autoconnect on load: try MetaMask, else open modal
+    window.addEventListener("load", async () => {
+      statusEl.textContent = "Connecting wallet…";
+      await fetch402();
+      await connectWallet(); // will try MetaMask, else WC
+    });
+
+    connectBtn.onclick = connectWallet;
+    payBtn.onclick = pay3USDC;
   </script>
 </body>
 </html>
