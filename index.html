@@ -4,11 +4,12 @@
   <meta charset="UTF-8" />
   <title>x402ape — Base USDC payment</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     body {
       background: radial-gradient(circle at top, #1f2937 0%, #020617 60%);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: #e2e8f0;
+      font-family: 'Press Start 2P', cursive;
+      color: #9ad5ff;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -16,73 +17,66 @@
       justify-content: flex-start;
       overflow-x: hidden;
       margin: 0;
+      text-shadow: 0 0 8px #1e90ff;
     }
-
     .running-track {
       width: 100%;
       overflow: hidden;
-      background: transparent;
       padding: 10px 0;
     }
-
-    .running-track .track {
+    .track {
       display: flex;
       gap: 80px;
       animation: move 10s linear infinite;
       width: max-content;
     }
-
-    .running-track img {
+    .track img {
       width: 100px;
       image-rendering: pixelated;
     }
-
     @keyframes move {
       0% { transform: translateX(100%); }
       100% { transform: translateX(-100%); }
     }
-
     .card {
       background: rgba(15, 23, 42, 0.7);
       border-radius: 18px;
-      padding: 24px 26px 26px;
+      padding: 24px;
       max-width: 520px;
-      width: 100%;
       text-align: center;
       margin-top: 30px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      box-shadow: 0 0 20px rgba(0,150,255,0.3);
     }
-
     button {
-      padding: 10px 16px;
+      padding: 14px 20px;
       border: none;
       border-radius: 10px;
-      background: #3b82f6;
+      background: #00b7ff;
       color: #fff;
-      font-size: 0.9rem;
+      font-size: 10px;
       cursor: pointer;
-      margin: 5px;
+      margin-top: 15px;
+      text-shadow: 0 0 5px #fff;
+      box-shadow: 0 0 10px #00b7ff;
     }
-
+    button:hover {
+      background: #1e90ff;
+      box-shadow: 0 0 15px #1e90ff;
+    }
     #status {
-      margin-top: 10px;
+      margin-top: 12px;
       background: rgba(255,255,255,0.05);
       padding: 10px;
       border-radius: 10px;
-      font-size: 0.9rem;
+      font-size: 10px;
       white-space: pre-line;
+      text-shadow: 0 0 6px #1e90ff;
     }
-
-    a { color: #60a5fa; }
   </style>
-
-  <!-- ethers -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
-  <!-- WalletConnect Web3Modal HTML SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@web3modal/html@3.5.3/dist/index.umd.js"></script>
 </head>
 <body>
-
   <div class="running-track">
     <div class="track">
       <img src="IMG_0880.png" alt="frog1">
@@ -98,100 +92,61 @@
 
   <div class="card">
     <h1>x402ape</h1>
-    <p>Pay for the service via Base USDC and stay compatible with x402scan.</p>
-    <p><b>Amount:</b> 3 USDC (Base)</p>
-    <button id="connectBtn">Connect Wallet</button>
-    <button id="payBtn">Pay 3 USDC</button>
-    <p>Check API endpoint: <a href="/api/pay" target="_blank">/api/pay</a></p>
-    <div id="status">Click “Connect Wallet” to start.</div>
+    <p>Pay 3 USDC (Base)</p>
+    <button id="payBtn">PAY 3 USDC</button>
+    <div id="status">Press “PAY 3 USDC” to start.</div>
   </div>
 
   <script>
     const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
     const RECEIVER = "0xF97a410f2f0b64Cb5820baD63d878c3A967235AA";
     const WC_PROJECT_ID = "63bd4633378dbc52c202e15313227c54";
-    const BASE = "0x2105";
     const status = document.getElementById("status");
     let provider;
 
-    // 🔧 Стабільне завантаження Web3Modal
-    async function getWeb3ModalClass() {
+    async function getWeb3Modal() {
       return new Promise((resolve) => {
         const check = () => {
-          if (window.Web3ModalHTML && window.Web3ModalHTML.Web3Modal) {
-            resolve(window.Web3ModalHTML.Web3Modal);
-          } else if (window.Web3Modal && typeof window.Web3Modal === "function") {
-            resolve(window.Web3Modal);
-          } else if (window.Web3ModalHTML && typeof window.Web3ModalHTML === "function") {
-            resolve(window.Web3ModalHTML);
-          } else {
-            setTimeout(check, 300);
-          }
+          if (window.Web3ModalHTML && window.Web3ModalHTML.Web3Modal) resolve(window.Web3ModalHTML.Web3Modal);
+          else if (window.Web3Modal) resolve(window.Web3Modal);
+          else setTimeout(check, 300);
         };
         check();
       });
     }
 
-    async function connectWallet() {
+    async function pay() {
       try {
-        status.textContent = "Loading WalletConnect…";
-        const Web3ModalClass = await getWeb3ModalClass();
-
-        const modal = new Web3ModalClass({
+        status.textContent = "Initializing wallet connection…";
+        const Web3Modal = await getWeb3Modal();
+        const modal = new Web3Modal({
           projectId: WC_PROJECT_ID,
           themeMode: "dark",
-          chains: [{
-            id: 8453,
-            name: "Base",
-            rpcUrl: "https://mainnet.base.org",
-            explorerUrl: "https://basescan.org",
-            currency: "ETH"
-          }],
-          metadata: {
-            name: "x402ape",
-            description: "Base USDC payment",
-            url: window.location.origin,
-            icons: ["https://x402scan.com/favicon.ico"]
-          }
+          chains: [{ id: 8453, name: "Base", rpcUrl: "https://mainnet.base.org" }],
+          metadata: { name: "x402ape", description: "Base USDC payment", url: window.location.origin }
         });
 
         if (window.ethereum && window.ethereum.isMetaMask) {
           provider = window.ethereum;
           await provider.request({ method: "eth_requestAccounts" });
-          status.textContent = "✅ Connected via MetaMask.";
+          status.textContent = "Connected via MetaMask. Sending 3 USDC…";
         } else {
           provider = await modal.openModal();
-          status.textContent = "✅ Connected via WalletConnect.";
+          status.textContent = "Connected via WalletConnect. Sending 3 USDC…";
         }
-      } catch (err) {
-        status.textContent = "❌ " + (err.message || err);
-      }
-    }
 
-    async function pay() {
-      if (!provider) {
-        status.textContent = "Please connect wallet first.";
-        return;
-      }
-      try {
-        status.textContent = "⏳ Sending 3 USDC…";
         const ethersProvider = new ethers.BrowserProvider(provider);
         const signer = await ethersProvider.getSigner();
         const usdc = new ethers.Contract(USDC, ["function transfer(address,uint256) returns (bool)"], signer);
         const tx = await usdc.transfer(RECEIVER, ethers.parseUnits("3", 6));
-        status.textContent = "Transaction sent:\\n" + tx.hash;
+        status.textContent = "Transaction sent:\n" + tx.hash;
         const rc = await tx.wait();
-        if (rc.status === 1) {
-          status.textContent = "✅ Payment success!\\n" + tx.hash;
-        } else {
-          status.textContent = "❌ Transaction failed.";
-        }
+        status.textContent = rc.status === 1 ? "✅ PAYMENT SUCCESSFUL!\nTX: " + tx.hash : "❌ TRANSACTION FAILED.";
       } catch (err) {
-        status.textContent = "❌ Error: " + (err.message || err);
+        status.textContent = "❌ ERROR: " + (err.message || err);
       }
     }
 
-    document.getElementById("connectBtn").onclick = connectWallet;
     document.getElementById("payBtn").onclick = pay;
   </script>
 </body>
