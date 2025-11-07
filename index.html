@@ -112,10 +112,25 @@
     const status = document.getElementById("status");
     let provider;
 
+    async function getWeb3Modal() {
+      return new Promise((resolve) => {
+        const check = () => {
+          if (window.Web3ModalHTML && window.Web3ModalHTML.Web3Modal) {
+            resolve(window.Web3ModalHTML.Web3Modal);
+          } else if (window.Web3Modal) {
+            resolve(window.Web3Modal);
+          } else {
+            setTimeout(check, 300);
+          }
+        };
+        check();
+      });
+    }
+
     async function connectWallet() {
       try {
         status.textContent = "Loading WalletConnect…";
-        const { Web3Modal } = window.Web3ModalHTML;
+        const Web3Modal = await getWeb3Modal();
         const modal = new Web3Modal({
           projectId: WC_PROJECT_ID,
           themeMode: "dark",
