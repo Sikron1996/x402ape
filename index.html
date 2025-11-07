@@ -23,8 +23,8 @@
   <!-- ethers -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
 
-  <!-- ✅ офіційний стабільний CDN Web3Modal (walletconnect.com) -->
-  <script src="https://unpkg.com/@web3modal/html@3.5.3/dist/index.umd.js"></script>
+  <!-- ✅ офіційний WalletConnect SDK без Web3Modal -->
+  <script src="https://unpkg.com/@walletconnect/ethereum-provider@2.14.1/dist/umd/index.min.js"></script>
 </head>
 <body>
   <div class="track">
@@ -87,25 +87,16 @@
 
     async function payViaWalletConnect(){
       try{
-        statusEl.textContent="Loading WalletConnect SDK…";
-        let tries=0;
-        while(!window.Web3ModalHTML?.Web3Modal && tries<40){await new Promise(r=>setTimeout(r,250));tries++;}
-        const Web3ModalClass=window.Web3ModalHTML?.Web3Modal||window.Web3Modal;
-        if(!Web3ModalClass) throw new Error("Web3Modal still not available after load.");
-        const modal=new Web3ModalClass({
+        statusEl.textContent="Initializing WalletConnect…";
+        const provider=await window.WalletConnectEthereumProvider.init({
           projectId:WC_PROJECT_ID,
-          themeMode:"dark",
-          walletConnectVersion:2,
-          chains:[{id:8453,name:"Base",rpcUrl:"https://mainnet.base.org",explorerUrl:"https://basescan.org"}],
-          metadata:{
-            name:"x402ape",
-            description:"Base USDC payment",
-            url:window.location.origin,
-            icons:["https://x402scan.com/favicon.ico"]
-          }
+          chains:[8453],
+          showQrModal:true,
+          methods:["eth_sendTransaction","personal_sign"],
+          rpcMap:{8453:"https://mainnet.base.org"},
         });
-        const provider=await modal.connectWalletConnect();
-        statusEl.textContent="Wallet connected, checking network…";
+        await provider.enable();
+        statusEl.textContent="Wallet connected. Checking network…";
         await ensureBaseNetwork(provider);
         await sendUSDC(provider);
       }catch(e){
