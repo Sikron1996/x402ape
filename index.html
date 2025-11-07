@@ -1,82 +1,92 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
   <meta charset="UTF-8" />
   <title>x402ape — Base USDC payment</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!-- Піксельний шрифт -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
   <style>
     body {
-      background: radial-gradient(circle at top, #1f2937 0%, #020617 60%);
-      font-family: 'Press Start 2P', cursive;
-      color: #9ad5ff;
-      min-height: 100vh;
+      background: #0b0f1a;
+      color: #00ff9d;
+      font-family: "Press Start 2P", monospace;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
+      min-height: 100vh;
       overflow-x: hidden;
       margin: 0;
-      text-shadow: 0 0 8px #1e90ff;
+      padding: 20px;
     }
+
     .running-track {
       width: 100%;
       overflow: hidden;
-      padding: 10px 0;
+      margin-bottom: 20px;
+      background: transparent;
     }
+
     .track {
       display: flex;
       gap: 80px;
       animation: move 10s linear infinite;
       width: max-content;
     }
+
     .track img {
       width: 100px;
       image-rendering: pixelated;
     }
+
     @keyframes move {
       0% { transform: translateX(100%); }
       100% { transform: translateX(-100%); }
     }
+
     .card {
-      background: rgba(15, 23, 42, 0.7);
-      border-radius: 18px;
-      padding: 24px;
-      max-width: 520px;
+      background: rgba(20, 28, 48, 0.8);
+      border: 2px solid #00ff9d;
+      border-radius: 12px;
+      padding: 20px;
       text-align: center;
-      margin-top: 30px;
-      box-shadow: 0 0 20px rgba(0,150,255,0.3);
+      max-width: 520px;
     }
+
     button {
-      padding: 14px 20px;
-      border: none;
-      border-radius: 10px;
-      background: #00b7ff;
-      color: #fff;
+      padding: 12px 18px;
+      border: 2px solid #00ff9d;
+      background: transparent;
+      color: #00ff9d;
+      font-family: "Press Start 2P", monospace;
       font-size: 10px;
       cursor: pointer;
-      margin-top: 15px;
-      text-shadow: 0 0 5px #fff;
-      box-shadow: 0 0 10px #00b7ff;
+      margin: 6px;
+      transition: background 0.3s, color 0.3s;
     }
+
     button:hover {
-      background: #1e90ff;
-      box-shadow: 0 0 15px #1e90ff;
+      background: #00ff9d;
+      color: #0b0f1a;
     }
+
     #status {
       margin-top: 12px;
-      background: rgba(255,255,255,0.05);
-      padding: 10px;
-      border-radius: 10px;
       font-size: 10px;
       white-space: pre-line;
-      text-shadow: 0 0 6px #1e90ff;
     }
+
+    a { color: #00ff9d; }
   </style>
+
+  <!-- ethers v6 CDN -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@web3modal/html@3.5.3/dist/index.umd.js"></script>
 </head>
 <body>
+  
   <div class="running-track">
     <div class="track">
       <img src="IMG_0880.png" alt="frog1">
@@ -92,62 +102,73 @@
 
   <div class="card">
     <h1>x402ape</h1>
-    <p>Pay 3 USDC (Base)</p>
-    <button id="payBtn">PAY 3 USDC</button>
-    <div id="status">Press “PAY 3 USDC” to start.</div>
+    <p>Оплата за послугу: <strong>1 USDC</strong> (мережа Base)</p>
+    <p>Сумісний з <a href="https://x402scan.com" target="_blank">x402scan</a></p>
+    <button id="payBtn">Оплатити 1 USDC</button>
+    <div id="status"></div>
   </div>
 
   <script>
-    const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+    const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
     const RECEIVER = "0xF97a410f2f0b64Cb5820baD63d878c3A967235AA";
-    const WC_PROJECT_ID = "63bd4633378dbc52c202e15313227c54";
-    const status = document.getElementById("status");
-    let provider;
+    const BASE_CHAIN_ID = "0x2105";
 
-    async function getWeb3Modal() {
-      return new Promise((resolve) => {
-        const check = () => {
-          if (window.Web3ModalHTML && window.Web3ModalHTML.Web3Modal) resolve(window.Web3ModalHTML.Web3Modal);
-          else if (window.Web3Modal) resolve(window.Web3Modal);
-          else setTimeout(check, 300);
-        };
-        check();
-      });
-    }
+    const btn = document.getElementById("payBtn");
+    const statusEl = document.getElementById("status");
 
-    async function pay() {
-      try {
-        status.textContent = "Initializing wallet connection…";
-        const Web3Modal = await getWeb3Modal();
-        const modal = new Web3Modal({
-          projectId: WC_PROJECT_ID,
-          themeMode: "dark",
-          chains: [{ id: 8453, name: "Base", rpcUrl: "https://mainnet.base.org" }],
-          metadata: { name: "x402ape", description: "Base USDC payment", url: window.location.origin }
-        });
-
-        if (window.ethereum && window.ethereum.isMetaMask) {
-          provider = window.ethereum;
-          await provider.request({ method: "eth_requestAccounts" });
-          status.textContent = "Connected via MetaMask. Sending 3 USDC…";
-        } else {
-          provider = await modal.openModal();
-          status.textContent = "Connected via WalletConnect. Sending 3 USDC…";
+    async function ensureBaseNetwork(provider) {
+      const current = await provider.send("eth_chainId", []);
+      if (current !== BASE_CHAIN_ID) {
+        try {
+          await provider.send("wallet_switchEthereumChain", [{ chainId: BASE_CHAIN_ID }]);
+        } catch (err) {
+          await provider.send("wallet_addEthereumChain", [{
+            chainId: BASE_CHAIN_ID,
+            chainName: "Base",
+            nativeCurrency: { name: "Base", symbol: "ETH", decimals: 18 },
+            rpcUrls: ["https://mainnet.base.org"],
+            blockExplorerUrls: ["https://basescan.org"]
+          }]);
         }
-
-        const ethersProvider = new ethers.BrowserProvider(provider);
-        const signer = await ethersProvider.getSigner();
-        const usdc = new ethers.Contract(USDC, ["function transfer(address,uint256) returns (bool)"], signer);
-        const tx = await usdc.transfer(RECEIVER, ethers.parseUnits("3", 6));
-        status.textContent = "Transaction sent:\n" + tx.hash;
-        const rc = await tx.wait();
-        status.textContent = rc.status === 1 ? "✅ PAYMENT SUCCESSFUL!\nTX: " + tx.hash : "❌ TRANSACTION FAILED.";
-      } catch (err) {
-        status.textContent = "❌ ERROR: " + (err.message || err);
       }
     }
 
-    document.getElementById("payBtn").onclick = pay;
+    async function payWithMetaMask() {
+      if (typeof window.ethereum === "undefined") {
+        statusEl.textContent = "❌ Встанови MetaMask!";
+        return;
+      }
+
+      statusEl.textContent = "⏳ Отримую 402...";
+      try {
+        const r = await fetch("/api/pay");
+        if (r.status === 402) statusEl.textContent = "✅ 402 отримано! Відкриваю гаманець...";
+      } catch (e) {
+        statusEl.textContent = "⚠️ Не вдалося отримати 402.";
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      await ensureBaseNetwork(provider);
+      const signer = await provider.getSigner();
+      const amount = ethers.parseUnits("1", 6);
+      const usdc = new ethers.Contract(USDC_ADDRESS, ["function transfer(address,uint256) returns (bool)"], signer);
+
+      try {
+        const tx = await usdc.transfer(RECEIVER, amount);
+        statusEl.textContent = "🚀 Транзакцію надіслано:\n" + tx.hash;
+        const rc = await tx.wait();
+        if (rc.status === 1) {
+          statusEl.textContent = "✅ Оплата успішна!\nTx: " + tx.hash;
+        } else {
+          statusEl.textContent = "❌ Транзакція не пройшла.";
+        }
+      } catch (err) {
+        statusEl.textContent = "❌ Помилка: " + err.message;
+      }
+    }
+
+    btn.onclick = payWithMetaMask;
   </script>
 </body>
 </html>
