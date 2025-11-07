@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     });
   }
 
-  const FACILITATOR_URL = "https://facilitator.b402.ai";
+  const FACILITATOR_URL = "https://facilitator.x402bscan.io";
 
   const x402Response = {
     x402Version: 1,
