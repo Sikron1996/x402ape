@@ -90,7 +90,8 @@
 
   <!-- ethers v6 -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
-  <!-- WalletConnect Web3Modal v3 -->
+
+  <!-- Web3Modal v3 (HTML SDK) -->
   <script src="https://unpkg.com/@web3modal/html@3.5.3"></script>
 </head>
 <body>
@@ -105,13 +106,13 @@
     </div>
 
     <p>Check API endpoint: <a href="/api/pay" target="_blank">/api/pay</a></p>
-    <div id="status">Waiting for wallet…</div>
+    <div id="status">Click “Connect Wallet” to begin.</div>
   </div>
 
   <script>
     const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
     const RECEIVER = "0xF97a410f2f0b64Cb5820baD63d878c3A967235AA";
-    const BASE_CHAIN_ID = "0x2105"; // 8453 dec
+    const BASE_CHAIN_ID = "0x2105"; // Base (8453)
     const WC_PROJECT_ID = "63bd4633378dbc52c202e15313227c54";
 
     const statusEl = document.getElementById("status");
@@ -120,13 +121,33 @@
 
     let currentProvider = null;
 
+    // Web3Modal v3 init
+    const { Web3Modal } = window['@web3modal/html'];
+    const metadata = {
+      name: "x402ape",
+      description: "Base USDC payment gateway",
+      url: window.location.origin,
+      icons: ["https://x402scan.com/favicon.ico"]
+    };
+    const modal = new Web3Modal({
+      projectId: WC_PROJECT_ID,
+      chains: [{
+        id: 8453,
+        name: "Base",
+        rpcUrl: "https://mainnet.base.org",
+        explorerUrl: "https://basescan.org",
+        currency: "ETH"
+      }],
+      metadata
+    });
+
     async function fetch402() {
       try {
         const r = await fetch("/api/pay");
         if (r.status === 402) {
-          statusEl.textContent = "Got 402 from backend. Ready to pay via wallet.";
+          statusEl.textContent = "Got 402 from backend. Ready to pay.";
         } else {
-          statusEl.textContent = "Backend returned " + r.status + ", continuing anyway.";
+          statusEl.textContent = "Backend returned " + r.status + ". Continuing.";
         }
       } catch (e) {
         statusEl.textContent = "Failed to fetch /api/pay: " + e.message;
@@ -162,35 +183,22 @@
           currentProvider = window.ethereum;
           await currentProvider.request({ method: "eth_requestAccounts" });
           await ensureBaseNetwork(currentProvider);
-          statusEl.textContent = "Connected via MetaMask.";
+          statusEl.textContent = "✅ Connected via MetaMask.";
           return;
         }
-
-        const modal = new window.Web3Modal({
-          projectId: WC_PROJECT_ID,
-          themeMode: "dark",
-          walletConnectVersion: 2,
-          chains: [{
-            id: 8453,
-            name: "Base",
-            rpcUrl: "https://mainnet.base.org",
-            explorerUrl: "https://basescan.org",
-            currency: "ETH"
-          }]
-        });
 
         const provider = await modal.openModal();
         currentProvider = provider;
         await ensureBaseNetwork(provider);
-        statusEl.textContent = "Connected via WalletConnect.";
+        statusEl.textContent = "✅ Connected via WalletConnect.";
       } catch (e) {
-        statusEl.textContent = "Connection failed: " + (e.message || e);
+        statusEl.textContent = "❌ Connection failed: " + (e.message || e);
       }
     }
 
     async function pay3USDC() {
       if (!currentProvider) {
-        statusEl.textContent = "Connect a wallet first.";
+        statusEl.textContent = "Connect wallet first.";
         return;
       }
 
@@ -204,10 +212,10 @@
 
       try {
         const tx = await usdc.transfer(RECEIVER, amount);
-        statusEl.textContent = "Tx sent, waiting…\\n" + tx.hash;
+        statusEl.textContent = "Tx sent… waiting confirmation.\n" + tx.hash;
         const receipt = await tx.wait();
         if (receipt.status === 1) {
-          statusEl.textContent = "✅ Payment successful\\n" + tx.hash;
+          statusEl.textContent = "✅ Payment successful!\n" + tx.hash;
           fetch("/api/pay?paid=true").catch(()=>{});
         } else {
           statusEl.textContent = "❌ Transaction failed.";
@@ -217,13 +225,12 @@
       }
     }
 
-    window.addEventListener("load", async () => {
-      statusEl.textContent = "Connecting wallet…";
+    // user actions
+    connectBtn.onclick = async () => {
+      statusEl.textContent = "Opening wallet modal…";
       await fetch402();
       await connectWallet();
-    });
-
-    connectBtn.onclick = connectWallet;
+    };
     payBtn.onclick = pay3USDC;
   </script>
 </body>
