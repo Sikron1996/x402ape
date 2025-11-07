@@ -1,5 +1,8 @@
 {
-  "name": "x402ape-base-v6",
+  "name": "x402ape-base-v9",
   "version": "1.0.0",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
 }
