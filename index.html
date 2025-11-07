@@ -5,13 +5,6 @@
   <title>x402ape — Base USDC payment</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    :root {
-      --bg: #0f172a;
-      --card: #111827;
-      --text: #e2e8f0;
-      --accent: #3b82f6;
-      --muted: #94a3b8;
-    }
     body {
       background: radial-gradient(circle at top, #1f2937 0%, #020617 60%);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -20,218 +13,136 @@
       align-items: center;
       justify-content: center;
       padding: 24px;
-      color: var(--text);
+      color: #e2e8f0;
     }
     .card {
       background: rgba(15, 23, 42, 0.7);
-      border: 1px solid rgba(148, 163, 184, 0.1);
       border-radius: 18px;
-      padding: 24px 26px 26px;
-      max-width: 520px;
+      padding: 26px;
+      max-width: 500px;
       width: 100%;
-      backdrop-filter: blur(6px);
-      box-shadow: 0 20px 40px rgba(0,0,0,0.28);
-    }
-    h1 {
-      font-size: 1.35rem;
-      margin-bottom: 4px;
-    }
-    p {
-      margin: 4px 0 10px;
-      color: var(--muted);
-    }
-    .amount {
-      background: rgba(59, 130, 246, 0.12);
-      border: 1px solid rgba(59, 130, 246, 0.4);
-      border-radius: 12px;
-      padding: 10px 14px;
-      display: inline-block;
-      margin-bottom: 14px;
-      font-weight: 600;
-      color: #fff;
-    }
-    .btn-row {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 16px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
     }
     button {
       padding: 10px 16px;
       border: none;
       border-radius: 10px;
-      background: var(--accent);
+      background: #3b82f6;
       color: #fff;
       font-size: 0.9rem;
       cursor: pointer;
-      transition: transform 0.08s ease-out;
-    }
-    button.secondary {
-      background: rgba(148, 163, 184, 0.12);
-      color: var(--text);
-      border: 1px solid rgba(148, 163, 184, 0.1);
-    }
-    button:active {
-      transform: translateY(1px);
+      margin: 6px;
     }
     #status {
-      margin-top: 8px;
-      font-weight: 500;
+      margin-top: 10px;
+      font-size: 0.9rem;
+      background: rgba(255,255,255,0.05);
+      padding: 10px;
+      border-radius: 10px;
       white-space: pre-line;
-      background: rgba(15, 23, 42, 0.35);
-      border: 1px solid rgba(148, 163, 184, 0.03);
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-size: 0.8rem;
     }
-    a {
-      color: #93c5fd;
-    }
+    a { color: #60a5fa; }
   </style>
 
   <!-- ethers v6 -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
-
-  <!-- Web3Modal v3 (HTML SDK) -->
-  <script src="https://unpkg.com/@web3modal/html@3.5.3"></script>
+  <!-- Web3Modal (WalletConnect HTML SDK) -->
+  <script src="https://unpkg.com/@web3modal/html"></script>
 </head>
 <body>
   <div class="card">
     <h1>x402ape</h1>
     <p>Pay for the service via Base USDC and stay compatible with x402scan.</p>
-    <div class="amount">Amount: 3 USDC (Base)</div>
-
-    <div class="btn-row">
+    <div><b>Amount:</b> 3 USDC (Base)</div>
+    <div style="margin:14px 0">
       <button id="connectBtn">Connect Wallet</button>
       <button id="payBtn">Pay 3 USDC</button>
     </div>
-
     <p>Check API endpoint: <a href="/api/pay" target="_blank">/api/pay</a></p>
-    <div id="status">Click “Connect Wallet” to begin.</div>
+    <div id="status">Ready. Click “Connect Wallet”.</div>
   </div>
 
   <script>
-    const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+    const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
     const RECEIVER = "0xF97a410f2f0b64Cb5820baD63d878c3A967235AA";
-    const BASE_CHAIN_ID = "0x2105"; // Base (8453)
+    const BASE = "0x2105"; // Base chainId
     const WC_PROJECT_ID = "63bd4633378dbc52c202e15313227c54";
-
     const statusEl = document.getElementById("status");
-    const connectBtn = document.getElementById("connectBtn");
-    const payBtn = document.getElementById("payBtn");
-
-    let currentProvider = null;
-
-    // Web3Modal v3 init
-    const { Web3Modal } = window['@web3modal/html'];
-    const metadata = {
-      name: "x402ape",
-      description: "Base USDC payment gateway",
-      url: window.location.origin,
-      icons: ["https://x402scan.com/favicon.ico"]
-    };
-    const modal = new Web3Modal({
-      projectId: WC_PROJECT_ID,
-      chains: [{
-        id: 8453,
-        name: "Base",
-        rpcUrl: "https://mainnet.base.org",
-        explorerUrl: "https://basescan.org",
-        currency: "ETH"
-      }],
-      metadata
-    });
-
-    async function fetch402() {
-      try {
-        const r = await fetch("/api/pay");
-        if (r.status === 402) {
-          statusEl.textContent = "Got 402 from backend. Ready to pay.";
-        } else {
-          statusEl.textContent = "Backend returned " + r.status + ". Continuing.";
-        }
-      } catch (e) {
-        statusEl.textContent = "Failed to fetch /api/pay: " + e.message;
-      }
-    }
-
-    async function ensureBaseNetwork(provider) {
-      const chainId = await provider.request({ method: "eth_chainId" });
-      if (chainId !== BASE_CHAIN_ID) {
-        try {
-          await provider.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: BASE_CHAIN_ID }]
-          });
-        } catch {
-          await provider.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: BASE_CHAIN_ID,
-              chainName: "Base",
-              nativeCurrency: { name: "Base", symbol: "ETH", decimals: 18 },
-              rpcUrls: ["https://mainnet.base.org"],
-              blockExplorerUrls: ["https://basescan.org"]
-            }]
-          });
-        }
-      }
-    }
+    let provider = null;
 
     async function connectWallet() {
       try {
+        statusEl.textContent = "Loading wallet options…";
+        // wait for SDK load
+        const waitFor = () => new Promise(r => {
+          const check = () => window['@web3modal/html'] ? r() : setTimeout(check, 300);
+          check();
+        });
+        await waitFor();
+
+        const { Web3Modal } = window['@web3modal/html'];
+        const modal = new Web3Modal({
+          projectId: WC_PROJECT_ID,
+          chains: [{
+            id: 8453,
+            name: "Base",
+            rpcUrl: "https://mainnet.base.org",
+            explorerUrl: "https://basescan.org",
+            currency: "ETH"
+          }],
+          metadata: {
+            name: "x402ape",
+            description: "Base USDC payment gateway",
+            url: window.location.origin,
+            icons: ["https://x402scan.com/favicon.ico"]
+          }
+        });
+
         if (window.ethereum && window.ethereum.isMetaMask) {
-          currentProvider = window.ethereum;
-          await currentProvider.request({ method: "eth_requestAccounts" });
-          await ensureBaseNetwork(currentProvider);
+          provider = window.ethereum;
+          await provider.request({ method: "eth_requestAccounts" });
           statusEl.textContent = "✅ Connected via MetaMask.";
-          return;
+        } else {
+          provider = await modal.openModal();
+          statusEl.textContent = "✅ Connected via WalletConnect.";
         }
 
-        const provider = await modal.openModal();
-        currentProvider = provider;
-        await ensureBaseNetwork(provider);
-        statusEl.textContent = "✅ Connected via WalletConnect.";
+        const chainId = await provider.request({ method: "eth_chainId" });
+        if (chainId !== BASE) {
+          await provider.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: BASE }]
+          }).catch(() => {});
+        }
+
       } catch (e) {
-        statusEl.textContent = "❌ Connection failed: " + (e.message || e);
+        statusEl.textContent = "❌ Connection error: " + (e.message || e);
       }
     }
 
-    async function pay3USDC() {
-      if (!currentProvider) {
-        statusEl.textContent = "Connect wallet first.";
+    async function pay() {
+      if (!provider) {
+        statusEl.textContent = "Please connect wallet first.";
         return;
       }
-
-      statusEl.textContent = "Sending 3 USDC… please confirm in wallet.";
-      const ethersProvider = new ethers.BrowserProvider(currentProvider);
-      const signer = await ethersProvider.getSigner();
-
-      const amount = ethers.parseUnits("3", 6);
-      const abi = ["function transfer(address to, uint amount) returns (bool)"];
-      const usdc = new ethers.Contract(USDC_ADDRESS, abi, signer);
+      statusEl.textContent = "⏳ Sending 3 USDC…";
 
       try {
-        const tx = await usdc.transfer(RECEIVER, amount);
-        statusEl.textContent = "Tx sent… waiting confirmation.\n" + tx.hash;
-        const receipt = await tx.wait();
-        if (receipt.status === 1) {
-          statusEl.textContent = "✅ Payment successful!\n" + tx.hash;
-          fetch("/api/pay?paid=true").catch(()=>{});
-        } else {
-          statusEl.textContent = "❌ Transaction failed.";
-        }
-      } catch (err) {
-        statusEl.textContent = "❌ Error: " + (err.message || err);
+        const ethersProvider = new ethers.BrowserProvider(provider);
+        const signer = await ethersProvider.getSigner();
+        const usdc = new ethers.Contract(USDC, ["function transfer(address to,uint amount) returns (bool)"], signer);
+        const tx = await usdc.transfer(RECEIVER, ethers.parseUnits("3", 6));
+        statusEl.textContent = "Transaction sent:\n" + tx.hash;
+        const rc = await tx.wait();
+        statusEl.textContent = rc.status === 1 ? "✅ Payment success\n" + tx.hash : "❌ Failed.";
+      } catch (e) {
+        statusEl.textContent = "❌ " + (e.message || e);
       }
     }
 
-    // user actions
-    connectBtn.onclick = async () => {
-      statusEl.textContent = "Opening wallet modal…";
-      await fetch402();
-      await connectWallet();
-    };
-    payBtn.onclick = pay3USDC;
+    document.getElementById("connectBtn").onclick = connectWallet;
+    document.getElementById("payBtn").onclick = pay;
   </script>
 </body>
 </html>
