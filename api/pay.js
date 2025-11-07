@@ -16,7 +16,7 @@ export default async function handler(req, res) {
       {
         scheme: "exact",
         network: "bsc",
-        maxAmountRequired: "1",
+        maxAmountRequired: "0.1",
         resource: "https://x402ape-o499.vercel.app/api/pay",
         description: "x402ape service payment (1 USD1, BNB)",
         mimeType: "application/json",
