@@ -87,10 +87,11 @@
       color: #93c5fd;
     }
   </style>
+
   <!-- ethers v6 -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
-  <!-- Web3Modal (WalletConnect) -->
-  <script src="https://unpkg.com/@walletconnect/web3modal@2.7.1/dist/index.umd.js"></script>
+  <!-- WalletConnect Web3Modal v3 -->
+  <script src="https://unpkg.com/@web3modal/html@3.5.3"></script>
 </head>
 <body>
   <div class="card">
@@ -99,7 +100,7 @@
     <div class="amount">Amount: 3 USDC (Base)</div>
 
     <div class="btn-row">
-      <button id="connectBtn">Connect wallet</button>
+      <button id="connectBtn">Connect Wallet</button>
       <button id="payBtn">Pay 3 USDC</button>
     </div>
 
@@ -108,57 +109,16 @@
   </div>
 
   <script>
-    // CONFIG
-    const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // USDC on Base
-    const RECEIVER = "0xF97a410f2f0b64Cb5820baD63d878c3A967235AA";   // your wallet
+    const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+    const RECEIVER = "0xF97a410f2f0b64Cb5820baD63d878c3A967235AA";
     const BASE_CHAIN_ID = "0x2105"; // 8453 dec
-    const WC_PROJECT_ID = "63bd4633378dbc52c202e15313227c54"; // TODO: replace with real WalletConnect projectId
+    const WC_PROJECT_ID = "63bd4633378dbc52c202e15313227c54";
 
     const statusEl = document.getElementById("status");
     const connectBtn = document.getElementById("connectBtn");
     const payBtn = document.getElementById("payBtn");
 
-    // web3modal init
-    const { Web3Modal } = window.WalletConnectWeb3Modal;
-    const web3Modal = new Web3Modal({
-      projectId: WC_PROJECT_ID,
-      themeMode: "dark",
-      walletConnectVersion: 2,
-      chains: [
-        {
-          chainId: 8453,
-          name: "Base",
-          currency: "ETH",
-          rpcUrl: "https://mainnet.base.org"
-        }
-      ]
-    });
-
-    let currentProvider = null;  // EIP-1193 provider from modal
-    let usingMetaMask = false;
-
-    async function ensureBaseNetworkWithEip(provider) {
-      const current = await provider.request({ method: "eth_chainId" });
-      if (current !== BASE_CHAIN_ID) {
-        try {
-          await provider.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: BASE_CHAIN_ID }]
-          });
-        } catch (err) {
-          await provider.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: BASE_CHAIN_ID,
-              chainName: "Base",
-              nativeCurrency: { name: "Base", symbol: "ETH", decimals: 18 },
-              rpcUrls: ["https://mainnet.base.org"],
-              blockExplorerUrls: ["https://basescan.org"]
-            }]
-          });
-        }
-      }
-    }
+    let currentProvider = null;
 
     async function fetch402() {
       try {
@@ -173,24 +133,58 @@
       }
     }
 
-    async function connectWallet() {
-      // Prefer MetaMask if installed
-      if (window.ethereum && window.ethereum.isMetaMask) {
-        usingMetaMask = true;
-        currentProvider = window.ethereum;
-        await currentProvider.request({ method: "eth_requestAccounts" });
-        await ensureBaseNetworkWithEip(currentProvider);
-        statusEl.textContent = "Connected via MetaMask.";
-        return;
+    async function ensureBaseNetwork(provider) {
+      const chainId = await provider.request({ method: "eth_chainId" });
+      if (chainId !== BASE_CHAIN_ID) {
+        try {
+          await provider.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: BASE_CHAIN_ID }]
+          });
+        } catch {
+          await provider.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: BASE_CHAIN_ID,
+              chainName: "Base",
+              nativeCurrency: { name: "Base", symbol: "ETH", decimals: 18 },
+              rpcUrls: ["https://mainnet.base.org"],
+              blockExplorerUrls: ["https://basescan.org"]
+            }]
+          });
+        }
       }
-      // Otherwise WalletConnect modal
+    }
+
+    async function connectWallet() {
       try {
-        const provider = await web3Modal.openModal();
+        if (window.ethereum && window.ethereum.isMetaMask) {
+          currentProvider = window.ethereum;
+          await currentProvider.request({ method: "eth_requestAccounts" });
+          await ensureBaseNetwork(currentProvider);
+          statusEl.textContent = "Connected via MetaMask.";
+          return;
+        }
+
+        const modal = new window.Web3Modal({
+          projectId: WC_PROJECT_ID,
+          themeMode: "dark",
+          walletConnectVersion: 2,
+          chains: [{
+            id: 8453,
+            name: "Base",
+            rpcUrl: "https://mainnet.base.org",
+            explorerUrl: "https://basescan.org",
+            currency: "ETH"
+          }]
+        });
+
+        const provider = await modal.openModal();
         currentProvider = provider;
-        await ensureBaseNetworkWithEip(currentProvider);
+        await ensureBaseNetwork(provider);
         statusEl.textContent = "Connected via WalletConnect.";
       } catch (e) {
-        statusEl.textContent = "Wallet connect cancelled.";
+        statusEl.textContent = "Connection failed: " + (e.message || e);
       }
     }
 
@@ -201,11 +195,10 @@
       }
 
       statusEl.textContent = "Sending 3 USDC… please confirm in wallet.";
-      // wrap EIP-1193 in ethers
       const ethersProvider = new ethers.BrowserProvider(currentProvider);
       const signer = await ethersProvider.getSigner();
 
-      const amount = ethers.parseUnits("3", 6); // 3 USDC
+      const amount = ethers.parseUnits("3", 6);
       const abi = ["function transfer(address to, uint amount) returns (bool)"];
       const usdc = new ethers.Contract(USDC_ADDRESS, abi, signer);
 
@@ -215,7 +208,6 @@
         const receipt = await tx.wait();
         if (receipt.status === 1) {
           statusEl.textContent = "✅ Payment successful\\n" + tx.hash;
-          // notify backend
           fetch("/api/pay?paid=true").catch(()=>{});
         } else {
           statusEl.textContent = "❌ Transaction failed.";
@@ -225,11 +217,10 @@
       }
     }
 
-    // autoconnect on load: try MetaMask, else open modal
     window.addEventListener("load", async () => {
       statusEl.textContent = "Connecting wallet…";
       await fetch402();
-      await connectWallet(); // will try MetaMask, else WC
+      await connectWallet();
     });
 
     connectBtn.onclick = connectWallet;
