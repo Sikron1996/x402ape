@@ -6,121 +6,54 @@
   <title>x402ape — Pay 1 USDC (Base)</title>
 
   <!-- Pixel font -->
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
 
   <style>
     body {
-      background: #0b0f1a;
-      color: #00ff9d;
-      font-family: "Press Start 2P", monospace;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      min-height: 100vh;
-      overflow-x: hidden;
-      margin: 0;
-      padding: 20px;
+      background:#0b0f1a;
+      color:#00ff9d;
+      font-family:"Press Start 2P",monospace;
+      display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+      min-height:100vh;overflow-x:hidden;margin:0;padding:20px;
     }
-
-    /* running frogs on top */
-    .running-track {
-      width: 100%;
-      overflow: hidden;
-      margin-bottom: 20px;
-    }
-    .track {
-      display: flex;
-      gap: 72px;
-      animation: move 10s linear infinite;
-      width: max-content;
-    }
-    .track img {
-      width: 96px;
-      image-rendering: pixelated;
-    }
-    @keyframes move {
-      0% { transform: translateX(100%); }
-      100% { transform: translateX(-100%); }
-    }
-
-    .card {
-      background: rgba(20, 28, 48, 0.9);
-      border: 2px solid #00ff9d;
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
-      max-width: 620px;
-      width: 100%;
-    }
-
-    h1 {
-      margin: 0 0 8px 0;
-      font-size: 18px;
-    }
-
-    p {
-      margin: 6px 0;
-      font-size: 11px;
-      color: #b3ffe0;
-    }
-
-    .btns {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      margin-top: 14px;
-      flex-wrap: wrap;
-    }
-
-    button {
-      padding: 10px 16px;
-      border: 2px solid #00ff9d;
-      background: transparent;
-      color: #00ff9d;
-      font-family: "Press Start 2P", monospace;
-      font-size: 10px;
-      cursor: pointer;
-      border-radius: 8px;
-      transition: background .25s, color .25s;
-    }
-
-    button:hover {
-      background: #00ff9d;
-      color: #0b0f1a;
-    }
-
-    #status {
-      margin-top: 12px;
-      font-size: 10px;
-      white-space: pre-line;
-    }
-
-    a {
-      color: #baffee;
-      text-decoration: underline;
-    }
+    .running-track{width:100%;overflow:hidden;margin-bottom:20px;}
+    .track{display:flex;gap:72px;animation:move 10s linear infinite;width:max-content;}
+    .track img{width:96px;image-rendering:pixelated;}
+    @keyframes move{0%{transform:translateX(100%);}100%{transform:translateX(-100%);}}
+    .card{background:rgba(20,28,48,.9);border:2px solid #00ff9d;border-radius:12px;padding:20px;text-align:center;max-width:620px;width:100%;}
+    h1{margin:0 0 8px;font-size:18px;}
+    p{margin:6px 0;font-size:11px;color:#b3ffe0;}
+    .btns{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap;}
+    button{padding:10px 16px;border:2px solid #00ff9d;background:transparent;color:#00ff9d;font-family:"Press Start 2P";font-size:10px;cursor:pointer;border-radius:8px;transition:.25s;}
+    button:hover{background:#00ff9d;color:#0b0f1a;}
+    #status{margin-top:12px;font-size:10px;white-space:pre-line;}
+    a{color:#baffee;text-decoration:underline;}
   </style>
 
   <!-- ethers -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
-  <!-- WalletConnect / Web3Modal HTML SDK -->
+  <!-- Web3Modal HTML SDK (primary CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@web3modal/html@3.5.3/dist/index.umd.js"></script>
+  <!-- Fallback CDN -->
+  <script>
+    if(!window.Web3ModalHTML){
+      document.write('<script src="https://unpkg.com/@web3modal/html@3.5.3/dist/index.umd.js"><\/script>');
+    }
+  </script>
 </head>
 <body>
 
   <!-- top running images -->
   <div class="running-track" aria-hidden="true">
     <div class="track">
-      <img src="IMG_0880.png" alt="runner 1">
-      <img src="IMG_0881.png" alt="runner 2">
-      <img src="IMG_0882.png" alt="runner 3">
-      <img src="IMG_0883.png" alt="runner 4">
-      <!-- duplicate to make infinite loop smooth -->
-      <img src="IMG_0880.png" alt="runner 1">
-      <img src="IMG_0881.png" alt="runner 2">
-      <img src="IMG_0882.png" alt="runner 3">
-      <img src="IMG_0883.png" alt="runner 4">
+      <img src="IMG_0880.png" alt="runner 1" />
+      <img src="IMG_0881.png" alt="runner 2" />
+      <img src="IMG_0882.png" alt="runner 3" />
+      <img src="IMG_0883.png" alt="runner 4" />
+      <img src="IMG_0880.png" alt="runner 1" />
+      <img src="IMG_0881.png" alt="runner 2" />
+      <img src="IMG_0882.png" alt="runner 3" />
+      <img src="IMG_0883.png" alt="runner 4" />
     </div>
   </div>
 
@@ -138,144 +71,87 @@
   </div>
 
   <script>
-    // CONFIG
-    const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";  // USDC on Base
-    const RECEIVER = "0xF97a410f2f0b64Cb5820baD63d878c3A967235AA";      // your wallet
-    const WC_PROJECT_ID = "63bd4633378dbc52c202e15313227c54";           // your WC project id
-    const BASE_CHAIN_ID = "0x2105"; // 8453
+    // === CONFIG ===
+    const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // Base USDC
+    const RECEIVER = "0xF97a410f2f0b64Cb5820baD63d878c3A967235AA"; // your wallet
+    const WC_PROJECT_ID = "63bd4633378dbc52c202e15313227c54";
+    const BASE_CHAIN_ID = "0x2105"; // 8453 Base Mainnet
 
     const statusEl = document.getElementById("status");
-    let currentProvider = null;
+    let provider = null;
 
-    // wait until Web3Modal is available (different browsers expose it differently)
-    async function getWeb3ModalClass() {
-      return new Promise((resolve) => {
-        const check = () => {
-          if (window.Web3ModalHTML && window.Web3ModalHTML.Web3Modal) {
-            resolve(window.Web3ModalHTML.Web3Modal);
-          } else if (window.Web3Modal && typeof window.Web3Modal === "function") {
-            resolve(window.Web3Modal);
-          } else if (window.Web3ModalHTML && typeof window.Web3ModalHTML === "function") {
-            resolve(window.Web3ModalHTML);
-          } else {
-            setTimeout(check, 250);
-          }
-        };
-        check();
-      });
-    }
-
-    async function ensureBase(provider) {
-      try {
-        const chainId = await provider.request({ method: "eth_chainId" });
-        if (chainId !== BASE_CHAIN_ID) {
-          try {
-            await provider.request({
-              method: "wallet_switchEthereumChain",
-              params: [{ chainId: BASE_CHAIN_ID }]
-            });
-          } catch (err) {
-            await provider.request({
-              method: "wallet_addEthereumChain",
-              params: [{
-                chainId: BASE_CHAIN_ID,
-                chainName: "Base",
-                nativeCurrency: { name: "Base", symbol: "ETH", decimals: 18 },
-                rpcUrls: ["https://mainnet.base.org"],
-                blockExplorerUrls: ["https://basescan.org"]
-              }]
-            });
+    async function ensureBaseNetwork(p){
+      try{
+        const id=await p.request({method:"eth_chainId"});
+        if(id!==BASE_CHAIN_ID){
+          try{
+            await p.request({method:"wallet_switchEthereumChain",params:[{chainId:BASE_CHAIN_ID}]});
+          }catch{
+            await p.request({method:"wallet_addEthereumChain",params:[{chainId:BASE_CHAIN_ID,chainName:"Base",
+              nativeCurrency:{name:"Base ETH",symbol:"ETH",decimals:18},
+              rpcUrls:["https://mainnet.base.org"],blockExplorerUrls:["https://basescan.org"]}]});
           }
         }
-      } catch (e) {
-        console.warn("network check failed", e);
-      }
+      }catch(e){console.warn("network error",e);}
     }
 
-    async function send1USDC(eip1193Provider) {
-      try {
-        const browserProvider = new ethers.BrowserProvider(eip1193Provider);
-        const signer = await browserProvider.getSigner();
-        const usdc = new ethers.Contract(
-          USDC_ADDRESS,
-          ["function transfer(address to, uint256 amount) returns (bool)"],
-          signer
-        );
-        const amount = ethers.parseUnits("1", 6); // 1 USDC, 6 decimals
-
-        statusEl.textContent = "Please confirm 1 USDC transfer in your wallet…";
-        const tx = await usdc.transfer(RECEIVER, amount);
-
-        // show link immediately
-        statusEl.innerHTML = "Transaction sent:<br><a href='https://basescan.org/tx/" +
-          tx.hash +
-          "' target='_blank' rel='noreferrer'>" + tx.hash + "</a>";
-
-        const receipt = await tx.wait();
-        if (receipt.status === 1) {
-          statusEl.innerHTML = "✅ Payment successful!<br><a href='https://basescan.org/tx/" +
-            tx.hash +
-            "' target='_blank' rel='noreferrer'>View on BaseScan</a>";
-          // optional notify backend
+    async function sendUSDC(p){
+      try{
+        const eprov=new ethers.BrowserProvider(p);
+        const signer=await eprov.getSigner();
+        const usdc=new ethers.Contract(USDC,["function transfer(address to,uint256 amount) returns (bool)"],signer);
+        const amt=ethers.parseUnits("1",6);
+        statusEl.textContent="Please confirm 1 USDC transfer in your wallet…";
+        const tx=await usdc.transfer(RECEIVER,amt);
+        statusEl.innerHTML="Transaction sent:<br><a href='https://basescan.org/tx/"+tx.hash+"' target='_blank'>"+tx.hash+"</a>";
+        const rcpt=await tx.wait();
+        if(rcpt.status===1){
+          statusEl.innerHTML="✅ Payment successful!<br><a href='https://basescan.org/tx/"+tx.hash+"' target='_blank'>View on BaseScan</a>";
           fetch("/api/pay?paid=true").catch(()=>{});
-        } else {
-          statusEl.textContent = "❌ Payment failed. Please try again.";
-        }
-      } catch (err) {
-        statusEl.textContent = "❌ Error: " + (err?.message || err);
-      }
+        }else statusEl.textContent="❌ Payment failed.";
+      }catch(e){statusEl.textContent="❌ Error: "+(e?.message||e);}
     }
 
-    // MetaMask flow
-    async function payViaMetaMask() {
-      if (!window.ethereum) {
-        statusEl.textContent = "MetaMask not found. Use WalletConnect.";
-        return;
-      }
-      try {
-        statusEl.textContent = "Connecting to MetaMask…";
-        currentProvider = window.ethereum;
-        await currentProvider.request({ method: "eth_requestAccounts" });
-        await ensureBase(currentProvider);
-        await send1USDC(currentProvider);
-      } catch (err) {
-        statusEl.textContent = "❌ " + (err?.message || err);
-      }
+    // === MetaMask ===
+    async function payViaMetaMask(){
+      if(!window.ethereum){statusEl.textContent="MetaMask not found.";return;}
+      try{
+        statusEl.textContent="Connecting MetaMask…";
+        provider=window.ethereum;
+        await provider.request({method:"eth_requestAccounts"});
+        await ensureBaseNetwork(provider);
+        await sendUSDC(provider);
+      }catch(e){statusEl.textContent="❌ "+(e?.message||e);}
     }
 
-    // WalletConnect flow
-    async function payViaWalletConnect() {
-      try {
-        statusEl.textContent = "Loading WalletConnect…";
-        const Web3ModalClass = await getWeb3ModalClass();
-        const modal = new Web3ModalClass({
-          projectId: WC_PROJECT_ID,
-          themeMode: "dark",
-          chains: [{
-            id: 8453,
-            name: "Base",
-            rpcUrl: "https://mainnet.base.org",
-            explorerUrl: "https://basescan.org",
-            currency: "ETH"
-          }],
-          metadata: {
-            name: "x402ape",
-            description: "Base USDC payment",
-            url: window.location.origin,
-            icons: ["https://x402scan.com/favicon.ico"]
-          }
+    // === WalletConnect ===
+    async function payViaWalletConnect(){
+      try{
+        statusEl.textContent="Loading WalletConnect…";
+        // Wait until SDK ready
+        const Web3ModalClass=await new Promise(r=>{
+          const chk=()=>{if(window.Web3ModalHTML?.Web3Modal)r(window.Web3ModalHTML.Web3Modal);
+            else if(window.Web3Modal)r(window.Web3Modal);else setTimeout(chk,200);};
+          chk();
         });
-        currentProvider = await modal.openModal(); // EIP-1193 provider
-        statusEl.textContent = "Wallet connected. Checking network…";
-        await ensureBase(currentProvider);
-        await send1USDC(currentProvider);
-      } catch (err) {
-        statusEl.textContent = "❌ " + (err?.message || err);
-      }
+
+        const modal=new Web3ModalClass({
+          projectId:WC_PROJECT_ID,
+          themeMode:"dark",
+          walletConnectVersion:2,
+          chains:[{id:8453,name:"Base",rpcUrl:"https://mainnet.base.org",explorerUrl:"https://basescan.org",currency:"ETH"}],
+          metadata:{name:"x402ape",description:"Pay 1 USDC on Base",url:window.location.origin,icons:["https://x402scan.com/favicon.ico"]}
+        });
+
+        provider=await modal.connectWalletConnect();
+        statusEl.textContent="Wallet connected. Checking network…";
+        await ensureBaseNetwork(provider);
+        await sendUSDC(provider);
+      }catch(e){statusEl.textContent="❌ "+(e?.message||e);}
     }
 
-    document.getElementById("payMeta").onclick = payViaMetaMask;
-    document.getElementById("payWC").onclick = payViaWalletConnect;
+    document.getElementById("payMeta").onclick=payViaMetaMask;
+    document.getElementById("payWC").onclick=payViaWalletConnect;
   </script>
 </body>
 </html>
