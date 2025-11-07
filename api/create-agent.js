@@ -12,13 +12,19 @@ export default async function handler(req, res) {
       callback: "https://x402ape-cjnv.vercel.app/api/pay?paid=true"
     };
 
-    const response = await fetch("https://facilitator.payai.network/api/v1/agents", {
+    const response = await fetch("https://x402-facilitator.aurracloud.com/api/v1/3b3cc8eb-5c36-419b-aeda-052a227debac/agents", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
     });
 
-    const data = await response.json();
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { raw: text };
+    }
     res.status(200).json(data);
   } catch (err) {
     res.status(500).json({ error: err.message || "Agent creation failed" });
