@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>x402ape — Pay 1 USDC (Base)</title>
 
-  <!-- Pixel font -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
 
   <style>
@@ -36,20 +35,18 @@
     a { color: #baffee; text-decoration: underline; }
   </style>
 
-  <!-- ethers -->
+  <!-- ethers.js -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
 
-  <!-- Web3Modal primary + fallback -->
-  <script src="https://cdn.jsdelivr.net/npm/@web3modal/html@3.5.3/dist/index.umd.js"></script>
-  <script>
-    if (!window.Web3ModalHTML) {
-      document.write('<script src="https://unpkg.com/@web3modal/html@3.5.3/dist/index.umd.js"><\/script>');
-    }
+  <!-- Web3Modal stable ESM import (guaranteed to work) -->
+  <script type="module">
+    import { Web3Modal } from "https://esm.run/@web3modal/html@3.5.3";
+
+    window.SafeWeb3Modal = Web3Modal;
   </script>
 </head>
 <body>
 
-  <!-- top running images -->
   <div class="running-track" aria-hidden="true">
     <div class="track">
       <img src="IMG_0880.png" alt="runner 1" />
@@ -77,91 +74,61 @@
   </div>
 
   <script>
-    // === CONFIG ===
-    const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // Base USDC
-    const RECEIVER = "0xF97a410f2f0b64Cb5820baD63d878c3A967235AA"; // your wallet
+    const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+    const RECEIVER = "0xF97a410f2f0b64Cb5820baD63d878c3A967235AA";
     const WC_PROJECT_ID = "63bd4633378dbc52c202e15313227c54";
-    const BASE_CHAIN_ID = "0x2105"; // 8453 Base
-
+    const BASE_CHAIN_ID = "0x2105";
     const statusEl = document.getElementById("status");
 
     async function ensureBaseNetwork(provider) {
-      try {
-        const chainId = await provider.request({ method: "eth_chainId" });
-        if (chainId !== BASE_CHAIN_ID) {
-          try {
-            await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BASE_CHAIN_ID }] });
-          } catch {
-            await provider.request({
-              method: "wallet_addEthereumChain",
-              params: [{
-                chainId: BASE_CHAIN_ID,
-                chainName: "Base",
-                nativeCurrency: { name: "Base ETH", symbol: "ETH", decimals: 18 },
-                rpcUrls: ["https://mainnet.base.org"],
-                blockExplorerUrls: ["https://basescan.org"]
-              }]
-            });
-          }
+      const chainId = await provider.request({ method: "eth_chainId" });
+      if (chainId !== BASE_CHAIN_ID) {
+        try {
+          await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BASE_CHAIN_ID }] });
+        } catch {
+          await provider.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: BASE_CHAIN_ID,
+              chainName: "Base",
+              nativeCurrency: { name: "Base ETH", symbol: "ETH", decimals: 18 },
+              rpcUrls: ["https://mainnet.base.org"],
+              blockExplorerUrls: ["https://basescan.org"]
+            }]
+          });
         }
-      } catch (e) {
-        console.warn("network error", e);
       }
     }
 
     async function sendUSDC(provider) {
-      try {
-        const ethersProvider = new ethers.BrowserProvider(provider);
-        const signer = await ethersProvider.getSigner();
-        const usdc = new ethers.Contract(USDC, ["function transfer(address to,uint256 amount) returns (bool)"], signer);
-        const amount = ethers.parseUnits("1", 6);
-        statusEl.textContent = "Please confirm the transfer in your wallet…";
-        const tx = await usdc.transfer(RECEIVER, amount);
-        statusEl.innerHTML = "Transaction sent:<br><a href='https://basescan.org/tx/" + tx.hash + "' target='_blank'>" + tx.hash + "</a>";
-        const receipt = await tx.wait();
-        if (receipt.status === 1) {
-          statusEl.innerHTML = "✅ Payment successful!<br><a href='https://basescan.org/tx/" + tx.hash + "' target='_blank'>View on BaseScan</a>";
-          fetch("/api/pay?paid=true").catch(() => {});
-        } else statusEl.textContent = "❌ Transaction failed.";
-      } catch (e) {
-        statusEl.textContent = "❌ Error: " + (e?.message || e);
+      const ethersProvider = new ethers.BrowserProvider(provider);
+      const signer = await ethersProvider.getSigner();
+      const usdc = new ethers.Contract(USDC, ["function transfer(address to, uint256 amount) returns (bool)"], signer);
+      const amount = ethers.parseUnits("1", 6);
+      statusEl.textContent = "Please confirm 1 USDC transfer...";
+      const tx = await usdc.transfer(RECEIVER, amount);
+      statusEl.innerHTML = "Transaction sent:<br><a href='https://basescan.org/tx/" + tx.hash + "' target='_blank'>" + tx.hash + "</a>";
+      const rcpt = await tx.wait();
+      if (rcpt.status === 1) {
+        statusEl.innerHTML = "✅ Payment successful!<br><a href='https://basescan.org/tx/" + tx.hash + "' target='_blank'>View on BaseScan</a>";
+      } else {
+        statusEl.textContent = "❌ Transaction failed.";
       }
     }
 
     async function payViaMetaMask() {
-      if (!window.ethereum) {
-        statusEl.textContent = "MetaMask not found.";
-        return;
-      }
-      try {
-        statusEl.textContent = "Connecting MetaMask…";
-        const provider = window.ethereum;
-        await provider.request({ method: "eth_requestAccounts" });
-        await ensureBaseNetwork(provider);
-        await sendUSDC(provider);
-      } catch (e) {
-        statusEl.textContent = "❌ " + (e?.message || e);
-      }
+      if (!window.ethereum) return statusEl.textContent = "❌ MetaMask not found.";
+      const provider = window.ethereum;
+      await provider.request({ method: "eth_requestAccounts" });
+      await ensureBaseNetwork(provider);
+      await sendUSDC(provider);
     }
 
     async function payViaWalletConnect() {
       try {
-        statusEl.textContent = "Loading WalletConnect…";
-        // Wait until library is ready
-        await new Promise((resolve, reject) => {
-          let tries = 0;
-          const check = () => {
-            tries++;
-            if (window.Web3ModalHTML?.Web3Modal || window.Web3Modal) resolve();
-            else if (tries > 40) reject("Web3Modal SDK not loaded.");
-            else setTimeout(check, 250);
-          };
-          check();
-        });
-
-        const Web3ModalClass = window.Web3ModalHTML?.Web3Modal || window.Web3Modal;
-        if (!Web3ModalClass) throw new Error("Web3Modal SDK missing. Check CDN or Reown domain setup.");
-
+        statusEl.textContent = "Loading WalletConnect...";
+        const Web3ModalClass = window.SafeWeb3Modal;
+        if (!Web3ModalClass) throw new Error("Web3Modal SDK not loaded via ESM (esm.run)");
         const modal = new Web3ModalClass({
           projectId: WC_PROJECT_ID,
           themeMode: "dark",
@@ -169,19 +136,18 @@
           chains: [{ id: 8453, name: "Base", rpcUrl: "https://mainnet.base.org", explorerUrl: "https://basescan.org" }],
           metadata: {
             name: "x402ape",
-            description: "Pay 1 USDC on Base",
+            description: "Base USDC payment",
             url: window.location.origin,
             icons: ["https://x402scan.com/favicon.ico"]
           }
         });
-
         const provider = await modal.connectWalletConnect();
-        statusEl.textContent = "Wallet connected. Checking network…";
+        statusEl.textContent = "Wallet connected. Checking network...";
         await ensureBaseNetwork(provider);
         await sendUSDC(provider);
-      } catch (e) {
-        console.error(e);
-        statusEl.textContent = "❌ " + (e?.message || e);
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = "❌ " + (err?.message || err);
       }
     }
 
