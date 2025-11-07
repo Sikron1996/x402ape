@@ -14,7 +14,7 @@ export default async function handler(req, res) {
         scheme: "exact",
         network: "base",
         maxAmountRequired: "1",
-        resource: "x402ape",
+        resource: "https://x402ape-k68m.vercel.app/api/pay",
         description: "x402ape service payment (1 USDC, Base)",
         mimeType: "application/json",
         payTo: "0xF97a410f2f0b64Cb5820baD63d878c3A967235AA",
