@@ -1,10 +1,13 @@
 export default async function handler(req, res) {
-  // Allow manual success check (e.g. facilitator callback or manual poll)
+  // callback from facilitator
   if (req.query && req.query.paid === "true") {
-    return res.status(200).json({ status: "success" });
+    return res.status(200).json({
+      status: "success",
+      message: "✅ Payment successful (PayAI callback)"
+    });
   }
 
-  const FACILITATOR_URL = "https://facilitator.payai.network/";
+  const FACILITATOR_URL = "https://facilitator.payai.network/api/v1";
 
   const x402Response = {
     x402Version: 1,
@@ -14,8 +17,8 @@ export default async function handler(req, res) {
         scheme: "exact",
         network: "base",
         maxAmountRequired: "1",
-        resource: "https://x402ape-k68m.vercel.app/api/pay",
-        description: "x402ape service payment (1 USDC, Base)",
+        resource: "https://x402ape-payai.vercel.app/api/pay",
+        description: "x402ape service payment (1 USDC, Base via PayAI)",
         mimeType: "application/json",
         payTo: "0xF97a410f2f0b64Cb5820baD63d878c3A967235AA",
         maxTimeoutSeconds: 600,
@@ -31,12 +34,11 @@ export default async function handler(req, res) {
         },
         extra: {
           serviceName: "x402ape",
-          note: "Payment confirmed by facilitator"
+          via: "payai"
         }
       }
     ]
   };
 
-  // x402 requires 402
   res.status(402).json(x402Response);
 }

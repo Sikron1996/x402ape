@@ -2,41 +2,56 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8" />
-  <title>x402ape payment (1 USDC)</title>
+  <title>x402ape (PayAI, 1 USDC)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body { font-family: sans-serif; max-width: 540px; margin: 40px auto; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 24px; }
+    body { font-family: sans-serif; max-width: 560px; margin: 40px auto; }
+    .card { border: 1px solid #ddd; border-radius: 14px; padding: 24px; }
     button { padding: 10px 16px; border: none; border-radius: 6px; background: #0052ff; color: #fff; font-size: 14px; cursor: pointer; }
-    code { background: #f4f4f4; padding: 2px 4px; border-radius: 4px; }
     #status { margin-top: 16px; font-weight: 600; }
-    pre { background: #f4f4f4; padding: 12px; border-radius: 6px; overflow: auto; }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>x402ape</h1>
-    <p>Оплата за послугу: <strong>1 USDC</strong> (мережа Base)</p>
-    <p>Цей endpoint зроблено під <a href="https://x402scan.com" target="_blank" rel="noreferrer">x402scan.com</a> і повертає strict-схему.</p>
+    <p>Оплата через <strong>PayAI</strong> фасилітатор. Сума: <strong>1 USDC</strong> (Base).</p>
+    <p>Перевірити endpoint: <a href="/api/pay" target="_blank">/api/pay</a></p>
     <button id="payBtn">Оплатити 1 USDC</button>
     <div id="status"></div>
-    <h3>Перевірка endpoint:</h3>
-    <p><a href="/api/pay" target="_blank">/api/pay</a></p>
   </div>
   <script>
     const btn = document.getElementById('payBtn');
     const statusEl = document.getElementById('status');
 
+    async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    async function pollPaid() {
+      for (let i = 0; i < 20; i++) {
+        try {
+          const r = await fetch('/api/pay?paid=true');
+          if (r.status === 200) {
+            const data = await r.json();
+            statusEl.textContent = data.message || "✅ Payment successful";
+            return;
+          }
+        } catch (e) {}
+        await sleep(3000);
+      }
+      statusEl.textContent = "Очікування платежу закінчилось. Якщо ви оплатили — оновіть сторінку.";
+    }
+
     btn.onclick = async () => {
-      statusEl.textContent = "Запитую 402…";
+      statusEl.textContent = "Запитую 402 від сервера…";
       try {
         const res = await fetch('/api/pay');
         const data = await res.json();
         if (res.status === 402) {
-          statusEl.textContent = "402 отримано. Очікуємо оплату через фасилітатор… (payer: " + data.payer + ")";
-          console.log("x402 response:", data);
-        } else {
+          statusEl.textContent = "402 отримано. Оплатіть у PayAI / гаманці… Чекаємо підтвердження…";
+          pollPaid();
+        } else if (res.status === 200) {
           statusEl.textContent = "✅ Payment successful";
+        } else {
+          statusEl.textContent = "Несподівана відповідь сервера.";
         }
       } catch (e) {
         statusEl.textContent = "Помилка: " + e.message;
