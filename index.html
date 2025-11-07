@@ -2,61 +2,100 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8" />
-  <title>x402ape (PayAI, 1 USDC)</title>
+  <title>x402ape — Base USDC payment</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body { font-family: sans-serif; max-width: 560px; margin: 40px auto; }
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 620px; margin: 40px auto; }
     .card { border: 1px solid #ddd; border-radius: 14px; padding: 24px; }
     button { padding: 10px 16px; border: none; border-radius: 6px; background: #0052ff; color: #fff; font-size: 14px; cursor: pointer; }
-    #status { margin-top: 16px; font-weight: 600; }
+    #status { margin-top: 16px; font-weight: 500; white-space: pre-line; }
+    code { background: #f4f4f4; padding: 2px 4px; border-radius: 4px; }
   </style>
+  <!-- ethers v6 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
 </head>
 <body>
   <div class="card">
     <h1>x402ape</h1>
-    <p>Оплата через <strong>PayAI</strong> фасилітатор. Сума: <strong>1 USDC</strong> (Base).</p>
-    <p>Перевірити endpoint: <a href="/api/pay" target="_blank">/api/pay</a></p>
-    <button id="payBtn">Оплатити 1 USDC</button>
+    <p>Оплата за послугу: <strong>1 USDC</strong> (мережа Base)</p>
+    <p>Цей endpoint сумісний з <a href="https://x402scan.com" target="_blank" rel="noreferrer">x402scan</a> і повертає 402.</p>
+    <button id="payBtn">Оплатити 1 USDC (MetaMask)</button>
     <div id="status"></div>
+    <p>Перевірка endpoint: <a href="/api/pay" target="_blank">/api/pay</a></p>
   </div>
   <script>
-    const btn = document.getElementById('payBtn');
-    const statusEl = document.getElementById('status');
+    const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // USDC on Base
+    const RECEIVER = "0xF97a410f2f0b64Cb5820baD63d878c3A967235AA";   // your wallet
+    const BASE_CHAIN_ID = "0x2105"; // 8453 decimal -> 0x2105
 
-    async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+    const btn = document.getElementById("payBtn");
+    const statusEl = document.getElementById("status");
 
-    async function pollPaid() {
-      for (let i = 0; i < 20; i++) {
+    async function ensureBaseNetwork(provider) {
+      const current = await provider.send("eth_chainId", []);
+      if (current !== BASE_CHAIN_ID) {
         try {
-          const r = await fetch('/api/pay?paid=true');
-          if (r.status === 200) {
-            const data = await r.json();
-            statusEl.textContent = data.message || "✅ Payment successful";
-            return;
-          }
-        } catch (e) {}
-        await sleep(3000);
+          await provider.send("wallet_switchEthereumChain", [{ chainId: BASE_CHAIN_ID }]);
+        } catch (err) {
+          // chain not added
+          await provider.send("wallet_addEthereumChain", [{
+            chainId: BASE_CHAIN_ID,
+            chainName: "Base",
+            nativeCurrency: { name: "Base", symbol: "ETH", decimals: 18 },
+            rpcUrls: ["https://mainnet.base.org"],
+            blockExplorerUrls: ["https://basescan.org"]
+          }]);
+        }
       }
-      statusEl.textContent = "Очікування платежу закінчилось. Якщо ви оплатили — оновіть сторінку.";
     }
 
-    btn.onclick = async () => {
-      statusEl.textContent = "Запитую 402 від сервера…";
+    async function payWithMetaMask() {
+      if (typeof window.ethereum === "undefined") {
+        statusEl.textContent = "Потрібен MetaMask або інший EVM-гаманець у браузері.";
+        return;
+      }
+
+      statusEl.textContent = "1) Отримую 402 від сервера…";
+      // запитуємо наш 402, щоб бути сумісними з x402
       try {
-        const res = await fetch('/api/pay');
-        const data = await res.json();
-        if (res.status === 402) {
-          statusEl.textContent = "402 отримано. Оплатіть у PayAI / гаманці… Чекаємо підтвердження…";
-          pollPaid();
-        } else if (res.status === 200) {
-          statusEl.textContent = "✅ Payment successful";
+        const r = await fetch("/api/pay");
+        if (r.status !== 402) {
+          statusEl.textContent = "Сервер повернув не 402, а " + r.status + ". Продовжую платіж все одно…";
         } else {
-          statusEl.textContent = "Несподівана відповідь сервера.";
+          statusEl.textContent = "402 отримано. Відкриваю гаманець…";
         }
       } catch (e) {
-        statusEl.textContent = "Помилка: " + e.message;
+        statusEl.textContent = "Не вдалося отримати 402: " + e.message;
       }
-    };
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      await ensureBaseNetwork(provider);
+      const signer = await provider.getSigner();
+
+      // USDC uses 6 decimals
+      const amount = ethers.parseUnits("1", 6);
+      const abi = ["function transfer(address to, uint amount) returns (bool)"];
+      const usdc = new ethers.Contract(USDC_ADDRESS, abi, signer);
+
+      try {
+        statusEl.textContent = "Підписання транзакції в гаманці…";
+        const tx = await usdc.transfer(RECEIVER, amount);
+        statusEl.textContent = "Транзакцію надіслано. Очікую підтвердження…\nTx: " + tx.hash;
+        const receipt = await tx.wait();
+        if (receipt.status === 1) {
+          statusEl.textContent = "✅ Payment successful\nTx: " + tx.hash;
+          // повідомимо бекенд (для x402scan)
+          fetch("/api/pay?paid=true").catch(()=>{});
+        } else {
+          statusEl.textContent = "❌ Транзакція не пройшла.";
+        }
+      } catch (err) {
+        statusEl.textContent = "❌ Помилка під час транзакції: " + (err.message || err);
+      }
+    }
+
+    btn.onclick = payWithMetaMask;
   </script>
 </body>
 </html>

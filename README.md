@@ -1,12 +1,11 @@
-# x402ape (PayAI, Base, 1 USDC)
+# x402ape (v6) — Base, 1 USDC, MetaMask
 
-Версія, що використовує публічний фасилітатор PayAI:
-https://facilitator.payai.network/api/v1
+Ця версія:
+- повертає 402 на /api/pay (щоб пройти x402scan)
+- на фронтенді відкриває MetaMask і відправляє 1 USDC на адресу 0xF97a410f2f0b64Cb5820baD63d878c3A967235AA
+- після підтвердження викликає /api/pay?paid=true
 
-- `/api/pay` — повертає 402 і каже, що платити через PayAI
-- фронтенд має кнопку і опитує `/api/pay?paid=true`
-- мережа: base
-- сума: 1 USDC
-- одержувач: 0xF97a410f2f0b64Cb5820baD63d878c3A967235AA
-
-Деплой: просто залий на Vercel.
+## Деплой
+1. Залийте у Vercel як Node/Static app.
+2. Після деплою зайдіть на головну — буде кнопка "Оплатити 1 USDC (MetaMask)".
+3. Потрібен гаманець у браузері та мережа Base.
