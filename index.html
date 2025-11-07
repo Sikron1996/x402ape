@@ -8,22 +8,51 @@
     body {
       background: radial-gradient(circle at top, #1f2937 0%, #020617 60%);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #e2e8f0;
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 24px;
-      color: #e2e8f0;
+      justify-content: flex-start;
+      overflow-x: hidden;
+      margin: 0;
     }
+
+    .running-track {
+      width: 100%;
+      overflow: hidden;
+      background: transparent;
+      padding: 10px 0;
+    }
+
+    .running-track .track {
+      display: flex;
+      gap: 80px;
+      animation: move 10s linear infinite;
+      width: max-content;
+    }
+
+    .running-track img {
+      width: 100px;
+      image-rendering: pixelated;
+    }
+
+    @keyframes move {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+
     .card {
       background: rgba(15, 23, 42, 0.7);
       border-radius: 18px;
-      padding: 26px;
-      max-width: 500px;
+      padding: 24px 26px 26px;
+      max-width: 520px;
       width: 100%;
       text-align: center;
+      margin-top: 30px;
       box-shadow: 0 20px 40px rgba(0,0,0,0.3);
     }
+
     button {
       padding: 10px 16px;
       border: none;
@@ -32,58 +61,64 @@
       color: #fff;
       font-size: 0.9rem;
       cursor: pointer;
-      margin: 6px;
+      margin: 5px;
     }
+
     #status {
       margin-top: 10px;
-      font-size: 0.9rem;
       background: rgba(255,255,255,0.05);
       padding: 10px;
       border-radius: 10px;
+      font-size: 0.9rem;
       white-space: pre-line;
     }
+
     a { color: #60a5fa; }
   </style>
 
-  <!-- ethers v6 -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
-  <!-- Web3Modal (WalletConnect HTML SDK) -->
-  <script src="https://unpkg.com/@web3modal/html"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@web3modal/html@3.5.3/dist/index.umd.js"></script>
 </head>
 <body>
+
+  <div class="running-track">
+    <div class="track">
+      <img src="IMG_0880.png" alt="frog1">
+      <img src="IMG_0881.png" alt="frog2">
+      <img src="IMG_0882.png" alt="frog3">
+      <img src="IMG_0883.png" alt="frog4">
+      <img src="IMG_0880.png" alt="frog1">
+      <img src="IMG_0881.png" alt="frog2">
+      <img src="IMG_0882.png" alt="frog3">
+      <img src="IMG_0883.png" alt="frog4">
+    </div>
+  </div>
+
   <div class="card">
     <h1>x402ape</h1>
     <p>Pay for the service via Base USDC and stay compatible with x402scan.</p>
-    <div><b>Amount:</b> 3 USDC (Base)</div>
-    <div style="margin:14px 0">
-      <button id="connectBtn">Connect Wallet</button>
-      <button id="payBtn">Pay 3 USDC</button>
-    </div>
+    <p><b>Amount:</b> 3 USDC (Base)</p>
+    <button id="connectBtn">Connect Wallet</button>
+    <button id="payBtn">Pay 3 USDC</button>
     <p>Check API endpoint: <a href="/api/pay" target="_blank">/api/pay</a></p>
-    <div id="status">Ready. Click “Connect Wallet”.</div>
+    <div id="status">Click “Connect Wallet” to start.</div>
   </div>
 
   <script>
     const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
     const RECEIVER = "0xF97a410f2f0b64Cb5820baD63d878c3A967235AA";
-    const BASE = "0x2105"; // Base chainId
     const WC_PROJECT_ID = "63bd4633378dbc52c202e15313227c54";
-    const statusEl = document.getElementById("status");
-    let provider = null;
+    const BASE = "0x2105";
+    const status = document.getElementById("status");
+    let provider;
 
     async function connectWallet() {
       try {
-        statusEl.textContent = "Loading wallet options…";
-        // wait for SDK load
-        const waitFor = () => new Promise(r => {
-          const check = () => window['@web3modal/html'] ? r() : setTimeout(check, 300);
-          check();
-        });
-        await waitFor();
-
-        const { Web3Modal } = window['@web3modal/html'];
+        status.textContent = "Loading WalletConnect…";
+        const { Web3Modal } = window.Web3ModalHTML;
         const modal = new Web3Modal({
           projectId: WC_PROJECT_ID,
+          themeMode: "dark",
           chains: [{
             id: 8453,
             name: "Base",
@@ -93,7 +128,7 @@
           }],
           metadata: {
             name: "x402ape",
-            description: "Base USDC payment gateway",
+            description: "Base USDC payment",
             url: window.location.origin,
             icons: ["https://x402scan.com/favicon.ico"]
           }
@@ -102,42 +137,37 @@
         if (window.ethereum && window.ethereum.isMetaMask) {
           provider = window.ethereum;
           await provider.request({ method: "eth_requestAccounts" });
-          statusEl.textContent = "✅ Connected via MetaMask.";
+          status.textContent = "✅ Connected via MetaMask.";
         } else {
           provider = await modal.openModal();
-          statusEl.textContent = "✅ Connected via WalletConnect.";
+          status.textContent = "✅ Connected via WalletConnect.";
         }
 
-        const chainId = await provider.request({ method: "eth_chainId" });
-        if (chainId !== BASE) {
-          await provider.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: BASE }]
-          }).catch(() => {});
-        }
-
-      } catch (e) {
-        statusEl.textContent = "❌ Connection error: " + (e.message || e);
+      } catch (err) {
+        status.textContent = "❌ " + (err.message || err);
       }
     }
 
     async function pay() {
       if (!provider) {
-        statusEl.textContent = "Please connect wallet first.";
+        status.textContent = "Please connect wallet first.";
         return;
       }
-      statusEl.textContent = "⏳ Sending 3 USDC…";
-
       try {
+        status.textContent = "⏳ Sending 3 USDC…";
         const ethersProvider = new ethers.BrowserProvider(provider);
         const signer = await ethersProvider.getSigner();
-        const usdc = new ethers.Contract(USDC, ["function transfer(address to,uint amount) returns (bool)"], signer);
+        const usdc = new ethers.Contract(USDC, ["function transfer(address,uint256) returns (bool)"], signer);
         const tx = await usdc.transfer(RECEIVER, ethers.parseUnits("3", 6));
-        statusEl.textContent = "Transaction sent:\n" + tx.hash;
+        status.textContent = "Transaction sent:\n" + tx.hash;
         const rc = await tx.wait();
-        statusEl.textContent = rc.status === 1 ? "✅ Payment success\n" + tx.hash : "❌ Failed.";
-      } catch (e) {
-        statusEl.textContent = "❌ " + (e.message || e);
+        if (rc.status === 1) {
+          status.textContent = "✅ Payment success!\n" + tx.hash;
+        } else {
+          status.textContent = "❌ Transaction failed.";
+        }
+      } catch (err) {
+        status.textContent = "❌ Error: " + (err.message || err);
       }
     }
 
