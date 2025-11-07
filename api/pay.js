@@ -26,7 +26,7 @@ export default async function handler(req, res) {
         outputSchema: {
           input: {
             type: "http",
-            method: "GET"
+            method: "POST"
           },
           output: {
             status: "success"
