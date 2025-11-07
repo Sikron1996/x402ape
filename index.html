@@ -1,123 +1,192 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>x402ape</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>x402ape — Pay 1 USDC (Base)</title>
+
+  <!-- Pixel font -->
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+
   <style>
     body {
+      background: #0b0f1a;
+      color: #00ff9d;
       font-family: "Press Start 2P", monospace;
-      background-color: #0b0f19;
-      color: #00ff99;
-      text-align: center;
-      margin: 0;
-      padding: 0;
-    }
-    .runner {
       display: flex;
-      justify-content: center;
-      gap: 40px;
-      overflow: hidden;
-      margin-top: 20px;
-      animation: slide 10s linear infinite;
-    }
-    .runner img {
-      width: 80px;
-      height: 80px;
-      image-rendering: pixelated;
-    }
-    @keyframes slide {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(-50%); }
-    }
-    .card {
-      border: 2px solid #00ff99;
-      border-radius: 10px;
-      width: 500px;
-      margin: 50px auto;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      overflow-x: hidden;
+      margin: 0;
       padding: 20px;
     }
-    button {
-      font-family: "Press Start 2P", monospace;
-      color: #00ff99;
-      background: transparent;
-      border: 2px solid #00ff99;
-      border-radius: 8px;
-      padding: 10px;
-      margin: 10px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #00ff99;
-      color: #0b0f19;
-    }
+    .running-track { width: 100%; overflow: hidden; margin-bottom: 20px; }
+    .track { display: flex; gap: 72px; animation: move 10s linear infinite; width: max-content; }
+    .track img { width: 96px; image-rendering: pixelated; }
+    @keyframes move { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+    .card { background: rgba(20,28,48,0.9); border: 2px solid #00ff9d; border-radius: 12px; padding: 20px; text-align: center; max-width: 620px; width: 100%; }
+    h1 { margin: 0 0 8px 0; font-size: 18px; }
+    p { margin: 6px 0; font-size: 11px; color: #b3ffe0; }
+    .btns { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+    button { padding: 10px 16px; border: 2px solid #00ff9d; background: transparent; color: #00ff9d; font-family: "Press Start 2P"; font-size: 10px; cursor: pointer; border-radius: 8px; transition: 0.25s; }
+    button:hover { background: #00ff9d; color: #0b0f1a; }
+    #status { margin-top: 12px; font-size: 10px; white-space: pre-line; }
+    a { color: #baffee; text-decoration: underline; }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+  <!-- ethers -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+
+  <!-- Web3Modal primary + fallback -->
+  <script src="https://cdn.jsdelivr.net/npm/@web3modal/html@3.5.3/dist/index.umd.js"></script>
+  <script>
+    if (!window.Web3ModalHTML) {
+      document.write('<script src="https://unpkg.com/@web3modal/html@3.5.3/dist/index.umd.js"><\/script>');
+    }
+  </script>
 </head>
 <body>
-  <div class="runner">
-    <img src="IMG_0880.png">
-    <img src="IMG_0881.png">
-    <img src="IMG_0882.png">
-    <img src="IMG_0883.png">
-    <img src="IMG_0880.png">
-    <img src="IMG_0881.png">
+
+  <!-- top running images -->
+  <div class="running-track" aria-hidden="true">
+    <div class="track">
+      <img src="IMG_0880.png" alt="runner 1" />
+      <img src="IMG_0881.png" alt="runner 2" />
+      <img src="IMG_0882.png" alt="runner 3" />
+      <img src="IMG_0883.png" alt="runner 4" />
+      <img src="IMG_0880.png" alt="runner 1" />
+      <img src="IMG_0881.png" alt="runner 2" />
+      <img src="IMG_0882.png" alt="runner 3" />
+      <img src="IMG_0883.png" alt="runner 4" />
+    </div>
   </div>
 
   <div class="card">
-    <h2>x402ape</h2>
-    <p>Pay for the service: <b>1 USDC</b> (Base network)<br>
-    Compatible with <a href="https://x402scan.com" target="_blank" style="color:#00ff99;">x402scan</a></p>
+    <h1>x402ape</h1>
+    <p>Pay for the service: <strong>1 USDC</strong> (Base network)</p>
+    <p>Compatible with <a href="https://x402scan.com" target="_blank" rel="noreferrer">x402scan</a></p>
 
-    <button onclick="payMetaMask()">Pay 1 USDC (MetaMask)</button>
-    <button onclick="payWalletConnect()">Pay 1 USDC (WalletConnect)</button>
+    <div class="btns">
+      <button id="payMeta">Pay 1 USDC (MetaMask)</button>
+      <button id="payWC">Pay 1 USDC (WalletConnect)</button>
+    </div>
 
-    <p id="status">Ready to connect...</p>
+    <div id="status">Choose a wallet to continue.</div>
   </div>
 
-  <!-- Wallet SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/@web3modal/html@3.5.3/dist/index.umd.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@6.11.0/dist/ethers.umd.min.js"></script>
   <script>
+    // === CONFIG ===
+    const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // Base USDC
+    const RECEIVER = "0xF97a410f2f0b64Cb5820baD63d878c3A967235AA"; // your wallet
     const WC_PROJECT_ID = "63bd4633378dbc52c202e15313227c54";
-    const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // Base USDC
-    const PAY_TO = "0x115ac3db6f4785d6b7ae7eea3a03fb0fb0bc9d5191f81546..."; // твоя адреса одержувача
-    const STATUS = document.getElementById("status");
+    const BASE_CHAIN_ID = "0x2105"; // 8453 Base
 
-    async function payMetaMask() {
+    const statusEl = document.getElementById("status");
+
+    async function ensureBaseNetwork(provider) {
       try {
-        STATUS.textContent = "Connecting MetaMask...";
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        const signer = await provider.getSigner();
-        const contract = new ethers.Contract(
-          USDC_ADDRESS,
-          ["function transfer(address to, uint256 amount) returns (bool)"],
-          signer
-        );
-        const tx = await contract.transfer(PAY_TO, ethers.parseUnits("1.0", 6));
-        STATUS.innerHTML = `✅ Payment sent! <a href="https://basescan.org/tx/${tx.hash}" target="_blank">View on BaseScan</a>`;
-      } catch (err) {
-        STATUS.textContent = "❌ " + err.message;
+        const chainId = await provider.request({ method: "eth_chainId" });
+        if (chainId !== BASE_CHAIN_ID) {
+          try {
+            await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BASE_CHAIN_ID }] });
+          } catch {
+            await provider.request({
+              method: "wallet_addEthereumChain",
+              params: [{
+                chainId: BASE_CHAIN_ID,
+                chainName: "Base",
+                nativeCurrency: { name: "Base ETH", symbol: "ETH", decimals: 18 },
+                rpcUrls: ["https://mainnet.base.org"],
+                blockExplorerUrls: ["https://basescan.org"]
+              }]
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("network error", e);
       }
     }
 
-    async function payWalletConnect() {
+    async function sendUSDC(provider) {
       try {
-        STATUS.textContent = "Loading WalletConnect...";
-        const modal = new window.Web3ModalHTML.Web3Modal({
+        const ethersProvider = new ethers.BrowserProvider(provider);
+        const signer = await ethersProvider.getSigner();
+        const usdc = new ethers.Contract(USDC, ["function transfer(address to,uint256 amount) returns (bool)"], signer);
+        const amount = ethers.parseUnits("1", 6);
+        statusEl.textContent = "Please confirm the transfer in your wallet…";
+        const tx = await usdc.transfer(RECEIVER, amount);
+        statusEl.innerHTML = "Transaction sent:<br><a href='https://basescan.org/tx/" + tx.hash + "' target='_blank'>" + tx.hash + "</a>";
+        const receipt = await tx.wait();
+        if (receipt.status === 1) {
+          statusEl.innerHTML = "✅ Payment successful!<br><a href='https://basescan.org/tx/" + tx.hash + "' target='_blank'>View on BaseScan</a>";
+          fetch("/api/pay?paid=true").catch(() => {});
+        } else statusEl.textContent = "❌ Transaction failed.";
+      } catch (e) {
+        statusEl.textContent = "❌ Error: " + (e?.message || e);
+      }
+    }
+
+    async function payViaMetaMask() {
+      if (!window.ethereum) {
+        statusEl.textContent = "MetaMask not found.";
+        return;
+      }
+      try {
+        statusEl.textContent = "Connecting MetaMask…";
+        const provider = window.ethereum;
+        await provider.request({ method: "eth_requestAccounts" });
+        await ensureBaseNetwork(provider);
+        await sendUSDC(provider);
+      } catch (e) {
+        statusEl.textContent = "❌ " + (e?.message || e);
+      }
+    }
+
+    async function payViaWalletConnect() {
+      try {
+        statusEl.textContent = "Loading WalletConnect…";
+        // Wait until library is ready
+        await new Promise((resolve, reject) => {
+          let tries = 0;
+          const check = () => {
+            tries++;
+            if (window.Web3ModalHTML?.Web3Modal || window.Web3Modal) resolve();
+            else if (tries > 40) reject("Web3Modal SDK not loaded.");
+            else setTimeout(check, 250);
+          };
+          check();
+        });
+
+        const Web3ModalClass = window.Web3ModalHTML?.Web3Modal || window.Web3Modal;
+        if (!Web3ModalClass) throw new Error("Web3Modal SDK missing. Check CDN or Reown domain setup.");
+
+        const modal = new Web3ModalClass({
           projectId: WC_PROJECT_ID,
           themeMode: "dark",
           walletConnectVersion: 2,
-          chains: [{ id: 8453, name: "Base", rpcUrl: "https://mainnet.base.org" }]
+          chains: [{ id: 8453, name: "Base", rpcUrl: "https://mainnet.base.org", explorerUrl: "https://basescan.org" }],
+          metadata: {
+            name: "x402ape",
+            description: "Pay 1 USDC on Base",
+            url: window.location.origin,
+            icons: ["https://x402scan.com/favicon.ico"]
+          }
         });
-        const session = await modal.openModal();
-        console.log("WalletConnect session:", session);
-        STATUS.textContent = "✅ Connected via WalletConnect!";
-      } catch (err) {
-        console.error(err);
-        STATUS.textContent = "❌ Failed to load WalletConnect: " + err.message;
+
+        const provider = await modal.connectWalletConnect();
+        statusEl.textContent = "Wallet connected. Checking network…";
+        await ensureBaseNetwork(provider);
+        await sendUSDC(provider);
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = "❌ " + (e?.message || e);
       }
     }
+
+    document.getElementById("payMeta").onclick = payViaMetaMask;
+    document.getElementById("payWC").onclick = payViaWalletConnect;
   </script>
 </body>
 </html>
