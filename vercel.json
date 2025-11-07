@@ -1,10 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "api/pay.js": {
-      "runtime": "vercel-node@3.0.0"
-    }
-  },
   "routes": [
     { "src": "/api/pay", "dest": "/api/pay.js" },
     { "src": "/(.*)", "dest": "/index.html" }
