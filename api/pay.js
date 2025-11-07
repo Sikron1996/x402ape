@@ -4,7 +4,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ status: "success" });
   }
 
-  const FACILITATOR_URL = "https://facilitator.payai.network/api/v1";
+  const FACILITATOR_URL = "https://facilitator.payai.network/";
 
   const x402Response = {
     x402Version: 1,
